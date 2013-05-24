@@ -516,14 +516,15 @@ void *SETTINGS_CPU_FREQ(void *arg)
 
 	settings_group.cpu_conf.freq = cpu_item->item_array[cpu_item->selected_id];
 
-	SETTINGS_Save();
-
 	SystemInit();
 	SystemCoreClockUpdate();
 
 	USARTInit();
 
 	debug.printf("\r\nSystemCoreClock:%d", SystemCoreClock);
+
+	SETTINGS_Save();
+
 
 	return NULL;
 }
