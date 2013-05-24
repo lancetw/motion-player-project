@@ -18,12 +18,12 @@
 #include "sd.h"
 
 #define VERSION_MAJOR 1
-#define VERSION_MINOR 4
+#define VERSION_MINOR 5
 
 #define SETTING_TYPE_DIR   0
 #define SETTING_TYPE_ITEM  1
 
-#define MAX_SETTING_NAME_LEN 30
+#define MAX_SETTING_NAME_LEN 33
 #define MAX_SETTING_STACK_LEVEL 8
 #define MAX_SETTING_ITEMS 20
 
@@ -44,7 +44,7 @@ typedef struct{
 }filer_conf_typedef;
 
 typedef struct{
-	int brightness;
+	volatile int brightness;
 	uint8_t time2sleep;
 }disp_conf_typedef;
 

@@ -171,7 +171,7 @@ const settings_list_typedef settings_baudrate_list[] = {
 
 const settings_list_typedef settings_cpu_list[] = {
 		{"..", NULL, 0, NEXT_LIST(settings_root_list)},
-		{"Clock Frequency", NULL, 8, NEXT_LIST(settings_cpufreq_list), NULL, SETTING_TYPE_ITEM, &settings_item_cpu},
+		{"Clock Frequency", NULL, 9, NEXT_LIST(settings_cpufreq_list), NULL, SETTING_TYPE_ITEM, &settings_item_cpu},
 };
 
 const settings_list_typedef settings_cpufreq_list[] = {
@@ -182,7 +182,8 @@ const settings_list_typedef settings_cpufreq_list[] = {
 		{"168MHz", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
 		{"200MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
 		{"225MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
-		{"250MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
+		{"240MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
+		{"250MHz OC Regarded as Gambling!", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
 };
 
 const settings_list_typedef settings_card_list[] = {
@@ -335,7 +336,7 @@ void SETTINGS_Init()
 	settings_item_usart.func = SETTINGS_BAUDRATE;
 
 	/* Init CPU Frequency Item */
-	static const unsigned int cpu_freq_tbl[] = {72, 100, 120, 168, 200, 225, 250};
+	static const unsigned int cpu_freq_tbl[] = {72, 100, 120, 168, 200, 225, 240, 250};
 #define CPU_FREQ_TABLE_ITEMS (sizeof(cpu_freq_tbl) / sizeof(cpu_freq_tbl[0]))
 	settings_group.cpu_conf.freq = validate_saved_val(settings_group.cpu_conf.freq, 168, cpu_freq_tbl, CPU_FREQ_TABLE_ITEMS);
 	settings_item_cpu.selected_id = selected_id(settings_group.cpu_conf.freq, cpu_freq_tbl, CPU_FREQ_TABLE_ITEMS);

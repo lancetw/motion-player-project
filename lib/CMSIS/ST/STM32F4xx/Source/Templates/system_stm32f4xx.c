@@ -361,7 +361,7 @@ static void SetSysClock(void)
 #define FLASH_SETTING_OFFSET (0x3000)
 #define FLASH_SETTING_BASE (FLASH_BASE + FLASH_SECTOR_1_OFFSET + FLASH_SETTING_OFFSET)
 
-  static const unsigned int cpu_freq_tbl[] = {72, 100, 120, 168, 200, 225, 250};
+  static const unsigned int cpu_freq_tbl[] = {72, 100, 120, 168, 200, 225, 240, 250};
   PLL_N = *(int*)FLASH_SETTING_BASE;
   PLL_N = validate_val(PLL_N, 168, cpu_freq_tbl, sizeof(cpu_freq_tbl) / sizeof(cpu_freq_tbl[0]));
 
@@ -391,6 +391,10 @@ static void SetSysClock(void)
   case 225:
 	  PLL_Q = 9; // 225 / 9 = 25MHz
 	  FLASH_LATENCY = FLASH_ACR_LATENCY_6WS;
+	  break;
+  case 240:
+	  PLL_Q = 10; // 240 / 10 = 24MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_7WS;
 	  break;
   case 250:
 	  PLL_Q = 10; // 250 / 10 = 25MHz

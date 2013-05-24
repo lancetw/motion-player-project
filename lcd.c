@@ -131,6 +131,11 @@ void LCDBackLightInit()
 	TIM_OC2Init(TIM4, &TIM_OCInitStructure);
 	TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);
 
+	TIM_BDTRInitTypeDef bdtr;
+	TIM_BDTRStructInit(&bdtr);
+	bdtr.TIM_AutomaticOutput = TIM_AutomaticOutput_Enable;
+	TIM_BDTRConfig(TIM1, &bdtr);
+
 	TIM_ARRPreloadConfig(TIM4, ENABLE);
 	TIM_Cmd(TIM4, ENABLE);
 

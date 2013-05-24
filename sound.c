@@ -326,8 +326,8 @@ int PlaySound(int id)
 
 	uint32_t data_offset = infile->seekBytes;
 
-	if(wav.bitPerSample > 16){
-		debug.printf("\r\n**Bit Per Sample must be 16bit or 8bit**");
+	if(wav.bitPerSample != 16){
+		debug.printf("\r\n**Bit Per Sample must be 16bit**");
 		debug.printf("\r\ndata offset:%d", data_offset);
 		ret = RET_PLAY_STOP;
 		goto END_WAV;
@@ -421,7 +421,8 @@ int PlaySound(int id)
 
 	media_data_totalBytes = wavChunk.chunkSize;
 	totalSec = wavChunk.chunkSize / wav.dataSpeed;
-	debug.printf("\r\ntotalSec:%d", totalSec);
+	setStrSec(timeStr, totalSec);
+	debug.printf("\r\nplay time:%s", timeStr);
 
 	// time elapsed
 	drawBuff->timeElapsed.x = 14;
@@ -531,7 +532,7 @@ int PlaySound(int id)
     dac_intr.fp = infile;
     dac_intr.buff = SOUND_BUFFER;
     dac_intr.bufferSize = sizeof(SOUND_BUFFER);
-    int SoundDMAHalfBlocks = (dac_intr.bufferSize / wav.blockSize) / 2;
+    int SoundDMAHalfBlocks = (dac_intr.bufferSize / (sizeof(int16_t) * 2)) / 2;
 
 	int loop_icon_touched = 0, loop_icon_cnt = 0, boost = 0;
 	int delay_buffer_filled = 0, DMA_Half_Filled = 0;
@@ -610,7 +611,7 @@ int PlaySound(int id)
 
 //    dac_intr.sound_reads = 0;
 	SOUNDInitDAC(wav.sampleRate);
-	SOUNDDMAConf((void*)&DAC->DHR12LD, wav.blockSize, sizeof(int16_t) * wav.numChannel);
+	SOUNDDMAConf((void*)&DAC->DHR12LD, wav.blockSize, (wav.bitPerSample / 8) * wav.numChannel);
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
 	DMA_Cmd(DMA1_Stream1, ENABLE);
 	TIM_Cmd(TIM1, ENABLE);

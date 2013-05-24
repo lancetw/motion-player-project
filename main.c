@@ -2,7 +2,6 @@
  *		STM32F4-Discovery Motion Player Project
  *		by Tonsuke
  *
- *		v1.4
  *		2013/05/23
  *
  *		http://motionplayer.wiki.fc2.com
@@ -36,14 +35,13 @@ void TIM8_UP_TIM13_IRQHandler(void) // Back Light & Sleep control timer
 		++time.curTime;
 
 		if(abs(time.curTime - time.prevTime) >= settings_group.disp_conf.time2sleep / 2 && !time.flags.dimLight && time.flags.enable){ // Dim Light
-			TIM_SetCompare2(TIM4, TIM_GetCapture2(TIM4) * 0.5f);
+			TIM_SetCompare2(TIM4, (int)(500 * (float)settings_group.disp_conf.brightness / 100.0f) - 1);
 			time.flags.dimLight = 1;
 		}
 
 		if(abs(time.curTime - time.prevTime) >= settings_group.disp_conf.time2sleep && time.flags.dimLight && time.flags.enable){ // Sleep Enable
 			time.flags.stop_mode = 1;
 		}
-//		debug.printf("\r\ntime update");
 	}
 }
 
