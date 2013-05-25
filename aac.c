@@ -232,9 +232,7 @@ NEXT:
 		my_fseek(fp, atomSize - 8, SEEK_CUR);
 		totalAtomSize += atomSize;
 //		debug.printf("\r\n***parentAtomSize:%d totalAtomSize:%d", parentAtomSize, totalAtomSize);
-	}while(parentAtomSize > (totalAtomSize + 4));
-
-//	debug.printf(" EXIT");
+	}while(parentAtomSize > totalAtomSize);
 
 	return 0;
 }
@@ -316,7 +314,6 @@ int PlayAAC(int id)
 	memcpy((void*)&infilecp, (void*)infile, sizeof(MY_FILE));
 
 	debug.printf("\r\n\n*** AAC Decode ***");
-	debug.printf("\r\nsizeof(drawBuff_typedef):%d", sizeof(drawBuff_typedef));
 
 	hAACDecoder = (HAACDecoder *)AACInitDecoder();
 

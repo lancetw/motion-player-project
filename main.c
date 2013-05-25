@@ -2,7 +2,8 @@
  *		STM32F4-Discovery Motion Player Project
  *		by Tonsuke
  *
- *		2013/05/23
+ *		v1.5
+ *		2013/05/25
  *
  *		http://motionplayer.wiki.fc2.com
  */
