@@ -1019,6 +1019,9 @@ int PlayMotionJpeg(int id){
 	case 225000000:
 		limitter = 0.95f;
 		break;
+	case 240000000:
+		limitter = 0.96f;
+		break;
 	case 250000000:
 		limitter = 0.97f;
 		break;
