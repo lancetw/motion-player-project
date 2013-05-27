@@ -203,6 +203,199 @@ const settings_list_typedef settings_back_to_cardlist[] = {
 		{"..", NULL, 0, NEXT_LIST(settings_card_list)},
 };
 
+
+/**
+  * @brief  Configures the System clock source, PLL Multiplier and Divider factors,
+  *         AHB/APBx prescalers and Flash settings
+  * @Note   This function should be called only once the RCC clock configuration
+  *         is reset to the default reset state (done in SystemInit() function).
+  * @param  None
+  * @retval None
+  */
+static void SetSysClock2(int PLL_N)
+{
+#define PLL_M 4
+#define PLL_P 2
+#define FLASH_SECTOR_1_OFFSET (0x4000)
+#define FLASH_SETTING_OFFSET (0x3000)
+#define FLASH_SETTING_BASE (FLASH_BASE + FLASH_SECTOR_1_OFFSET + FLASH_SETTING_OFFSET)
+
+	int PLL_Q;
+
+  static const unsigned int cpu_freq_tbl[] = {72, 100, 120, 168, 200, 225, 240, 250};
+//  PLL_N = *(int*)FLASH_SETTING_BASE;
+  PLL_N = validate_val(PLL_N, 168, cpu_freq_tbl, sizeof(cpu_freq_tbl) / sizeof(cpu_freq_tbl[0]));
+
+  /* Determin USB OTG FS, SDIO and RNG Clock from PLL_N */
+  uint32_t FLASH_LATENCY;
+  switch(PLL_N){
+  case 72:
+	  PLL_Q = 3; // 72 / 3 = 24MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_2WS;
+	  break;
+  case 100:
+	  PLL_Q = 4; // 100 / 4 = 25MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_3WS;
+	  break;
+  case 120:
+	  PLL_Q = 5; // 120 / 5 = 24MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_3WS;
+	  break;
+  case 168:
+	  PLL_Q = 7; // 168 / 7 = 24MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_5WS;
+	  break;
+  case 200:
+	  PLL_Q = 8; // 200 / 8 = 25MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_5WS;
+	  break;
+  case 225:
+	  PLL_Q = 9; // 225 / 9 = 25MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_6WS;
+	  break;
+  case 240:
+	  PLL_Q = 10; // 240 / 10 = 24MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_7WS;
+	  break;
+  case 250:
+	  PLL_Q = 10; // 250 / 10 = 25MHz
+	  FLASH_LATENCY = FLASH_ACR_LATENCY_7WS;
+	  break;
+  default:
+	  break;
+  }
+
+  SystemCoreClock = (((HSE_VALUE / PLL_M) * PLL_N) / PLL_P);
+
+/******************************************************************************/
+/*            PLL (clocked by HSE) used as System clock source                */
+/******************************************************************************/
+  __IO uint32_t StartUpCounter = 0, HSEStatus = 0;
+
+  /* Enable HSE */
+  RCC->CR |= ((uint32_t)RCC_CR_HSEON);
+
+  /* Wait till HSE is ready and if Time out is reached exit */
+  do
+  {
+    HSEStatus = RCC->CR & RCC_CR_HSERDY;
+    StartUpCounter++;
+  } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+
+  if ((RCC->CR & RCC_CR_HSERDY) != RESET)
+  {
+    HSEStatus = (uint32_t)0x01;
+  }
+  else
+  {
+    HSEStatus = (uint32_t)0x00;
+  }
+
+  if (HSEStatus == (uint32_t)0x01)
+  {
+    /* Enable high performance mode, System frequency up to 168 MHz */
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+    PWR->CR |= PWR_CR_PMODE;
+
+    /* HCLK = SYSCLK / 1*/
+    RCC->CFGR |= RCC_CFGR_HPRE_DIV1;
+
+    /* PCLK2 = HCLK / 2*/
+    RCC->CFGR |= RCC_CFGR_PPRE2_DIV2;
+
+    /* PCLK1 = HCLK / 4*/
+    RCC->CFGR |= RCC_CFGR_PPRE1_DIV4;
+
+    /* Configure the main PLL */
+    RCC->PLLCFGR = PLL_M | (PLL_N << 6) | (((PLL_P >> 1) -1) << 16) |
+                   (RCC_PLLCFGR_PLLSRC_HSE) | (PLL_Q << 24);
+
+    /* Enable the main PLL */
+    RCC->CR |= RCC_CR_PLLON;
+
+    /* Wait till the main PLL is ready */
+    while((RCC->CR & RCC_CR_PLLRDY) == 0)
+    {
+    }
+
+	uint32_t mcu_revision = *(uint32_t*)0xE0042000 & 0xffff0000;
+	switch(mcu_revision){
+	case 0x10000000: // A
+	case 0x20000000: // B
+	default:
+	    /* Configure Flash prefetch, Instruction cache, Data cache and wait state */
+	    FLASH->ACR = FLASH_ACR_ICEN |FLASH_ACR_DCEN | FLASH_LATENCY;
+		break;
+	case 0x10010000: // Z
+	    /* Configure Flash prefetch, Instruction cache, Data cache and wait state */
+	    FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN |FLASH_ACR_DCEN | FLASH_LATENCY;
+		break;
+	}
+
+
+    /* Select the main PLL as system clock source */
+    RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
+    RCC->CFGR |= RCC_CFGR_SW_PLL;
+
+    /* Wait till the main PLL is used as system clock source */
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS ) != RCC_CFGR_SWS_PLL);
+    {
+    }
+  }
+  else
+  { /* If HSE fails to start-up, the application will have wrong clock
+         configuration. User can add here some code to deal with this error */
+  }
+}
+
+/**
+  * @brief  Setup the microcontroller system
+  *         Initialize the Embedded Flash Interface, the PLL and update the
+  *         SystemFrequency variable.
+  * @param  None
+  * @retval None
+  */
+void SystemInit2(int PLL_N)
+{
+#define VECT_TAB_OFFSET  0x00 /*!< Vector Table base offset field.
+                                   This value must be a multiple of 0x200. */
+
+  /* Reset the RCC clock configuration to the default reset state ------------*/
+  /* Set HSION bit */
+  RCC->CR |= (uint32_t)0x00000001;
+
+  /* Reset CFGR register */
+  RCC->CFGR = 0x00000000;
+
+  /* Reset HSEON, CSSON and PLLON bits */
+  RCC->CR &= (uint32_t)0xFEF6FFFF;
+
+  /* Reset PLLCFGR register */
+  RCC->PLLCFGR = 0x24003010;
+
+  /* Reset HSEBYP bit */
+  RCC->CR &= (uint32_t)0xFFFBFFFF;
+
+  /* Disable all interrupts */
+  RCC->CIR = 0x00000000;
+
+#ifdef DATA_IN_ExtSRAM
+  SystemInit_ExtMemCtl();
+#endif /* DATA_IN_ExtSRAM */
+
+  /* Configure the System clock source, PLL Multiplier and Divider factors,
+     AHB/APBx prescalers and Flash settings ----------------------------------*/
+  SetSysClock2(PLL_N);
+
+  /* Configure the Vector Table location add offset address ------------------*/
+#ifdef VECT_TAB_SRAM
+  SCB->VTOR = SRAM_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM */
+#else
+  SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH */
+#endif
+}
+
+
 int validate_saved_val(int val, int default_val, const unsigned int tbl[], size_t tbl_size)
 {
 	int i, coincide = 0;
@@ -516,7 +709,9 @@ void *SETTINGS_CPU_FREQ(void *arg)
 
 	settings_group.cpu_conf.freq = cpu_item->item_array[cpu_item->selected_id];
 
-	SystemInit();
+	debug.printf("\r\nsettings_group.cpu_conf.freq:%d", settings_group.cpu_conf.freq);
+
+	SystemInit2(settings_group.cpu_conf.freq);
 	SystemCoreClockUpdate();
 
 	USARTInit();

@@ -686,7 +686,7 @@ int my_fseek(MY_FILE *fp, int64_t offset, int whence)
 		default:
 			return 1;
 	}
-	fp->seekSector = (fp->seekBytes >> 9) % fat.sectorsPerCluster;
+	fp->seekSector = (fp->seekBytes >> 9) & (fat.sectorsPerCluster - 1);
 	seekCluster = fp->seekBytes / fat.bytesPerCluster;
 
 	if(seekCluster > fp->clusterCnt){
@@ -712,7 +712,7 @@ size_t readFileSectors(MY_FILE *pfile, void *buf, size_t numSectors)
 
 	dataBlockAddress = (pfile->cluster - 2) * fat.sectorsPerCluster + fat.userDataSector; // クラスタ番号のデータ領域先頭セクタをセット
 
-	numAvailSectors = fat.sectorsPerCluster - pfile->seekSector % fat.sectorsPerCluster;
+	numAvailSectors = fat.sectorsPerCluster - (pfile->seekSector & (fat.sectorsPerCluster - 1));
 
 	if(numSectors > numAvailSectors){ // セクタ数が読込み可能セクタより多い場合
 		numRestSectors = numSectors - numAvailSectors; // 残りセクタ＝セクタ数 - 読込み可能セクタ
@@ -732,7 +732,7 @@ size_t readFileSectors(MY_FILE *pfile, void *buf, size_t numSectors)
 
 		pfile->seekSector += numSectors;
 		if(pfile->seekSector >= fat.sectorsPerCluster){
-			pfile->seekSector %= fat.sectorsPerCluster;
+			pfile->seekSector = pfile->seekSector & (fat.sectorsPerCluster - 1);
 			pfile->cluster = fat_func.getNCluster(pfile, 1, pfile->cluster);
 		}
 	}
@@ -740,7 +740,7 @@ size_t readFileSectors(MY_FILE *pfile, void *buf, size_t numSectors)
 	pfile->seekSector = seekSector;
 	pfile->cluster = cluster;
 
-	my_fseek(pfile, numSectors * 512, SEEK_CUR);
+	my_fseek(pfile, numSectors << 9, SEEK_CUR);
 
 	return ret;
 }
@@ -762,7 +762,7 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 		n = fp->fileSize - fp->seekBytes;
 	}
 
-	strn1 = 512 - fp->seekBytes % 512; //１回の読込みでコピーできるバイト数
+	strn1 = 512 - (fp->seekBytes & 511); //１回の読込みでコピーできるバイト数
 	strn2 = 0;
 	if(n > strn1){ // 一回の読込みでコピーできるバイト数を超えていたときの処理(読込むべきデータ列が次のセクタにまたがっていた場合の処理）
 		if(n <= 512){ // 読込むべきバイト数が512以下ならば２回目の読み込みバイト数は１回目の残り
@@ -771,10 +771,10 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 			if(strn1 != 512){
 				pbuf = buf;
 				SDBlockRead((uint8_t*)fbuf, fp->dataSector + fp->seekSector);
-				memcpy(pbuf, (uint8_t*)&fbuf[fp->seekBytes % 512], strn1); // 一回目の読込み
+				memcpy(pbuf, (uint8_t*)&fbuf[fp->seekBytes & 511], strn1); // 一回目の読込み
 				pbuf += strn1; // ポインタを一回目の読込み分進める
 				var = n - strn1; // 読込み数から一回目の読込み分引く
-				cnt = var / fat.bytesPerCluster, rest = var % fat.bytesPerCluster; // セクタ数と残りセクタ
+				cnt = var / fat.bytesPerCluster, rest = var & (fat.bytesPerCluster - 1) ; // セクタ数と残りセクタ
 				if(++fp->seekSector > fat.sectorsPerCluster){ // 次のシークセクタが次のクラスタにまたがっていた場合の処理
 					cluster = fat_func.getNCluster(fp, 1, fp->cluster);
 				}
@@ -782,7 +782,7 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 			} else { // strn1 == 512
 				pbuf = buf;
 				strn1 = 0;
-				cnt = n / fat.bytesPerCluster, rest = n % fat.bytesPerCluster;
+				cnt = n / fat.bytesPerCluster, rest = n & (fat.bytesPerCluster - 1);
 			}
 
 			for(i = 0;i < cnt;i++){
@@ -793,7 +793,7 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 			if(rest != 0){
 				readFileSectors(fp, pbuf, rest >> 9);
 				pbuf += (rest >> 9) << 9;
-				rest %= 512;
+				rest = rest & 511;
 				if(rest != 0){
 					my_fread(pbuf, size, rest, fp);
 				}
@@ -801,7 +801,7 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 			return ( size == 1 ? n : (n / size) );
 		}
 		SDBlockRead((uint8_t*)fbuf, fp->dataSector + fp->seekSector);
-		memcpy(buf, (uint8_t*)&fbuf[fp->seekBytes % 512], strn1); // 一回目の読込み
+		memcpy(buf, (uint8_t*)&fbuf[fp->seekBytes & 511], strn1); // 一回目の読込み
 		if(++fp->seekSector > fat.sectorsPerCluster){ // 次のシークセクタが次のクラスタにまたがっていた場合の処理
 			cluster = fat_func.getNCluster(fp, 1, fp->cluster);
 			SDBlockRead((uint8_t*)fbuf, ((uint32_t)(cluster - 2) * fat.sectorsPerCluster + fat.userDataSector));
@@ -811,7 +811,7 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 		memcpy((uint8_t*)(buf + strn1), (uint8_t*)fbuf, strn2);
 	} else {
 		SDBlockRead((uint8_t*)fbuf, fp->dataSector + fp->seekSector);
-		memcpy(buf, (uint8_t*)&fbuf[fp->seekBytes % 512], n);
+		memcpy(buf, (uint8_t*)&fbuf[fp->seekBytes & 511], n);
 	}
 
 	my_fseek(fp, n, SEEK_CUR);
