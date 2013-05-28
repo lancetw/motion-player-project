@@ -41,10 +41,14 @@ int initFat()
 
 	// セクタ/クラスタ
 	if((fat.sectorsPerCluster = fbuf[BPB_SecPerClus]) < 8){
-		return ERROR_CLUSTER_SIZE; // クラスタサイズが8KBより小さい場合はエラー
+		return ERROR_CLUSTER_SIZE; // クラスタサイズが4KBより小さい場合はエラー
 	}
 
 	fat.bytesPerCluster = fat.sectorsPerCluster * 512;			// バイト/クラスタ
+
+	fat.clusterDenomShift = 0;
+	while(!(fat.bytesPerCluster & (1 << fat.clusterDenomShift++))){}; // Cluster bytes right shift denominator
+	fat.clusterDenomShift = fat.clusterDenomShift - 1;
 
 	fat.reservedSectors = *((uint16_t*)&fbuf[BPB_RsvdSecCnt]); // 予約領域
 
@@ -687,7 +691,7 @@ int my_fseek(MY_FILE *fp, int64_t offset, int whence)
 			return 1;
 	}
 	fp->seekSector = (fp->seekBytes >> 9) & (fat.sectorsPerCluster - 1);
-	seekCluster = fp->seekBytes / fat.bytesPerCluster;
+	seekCluster = fp->seekBytes >> fat.clusterDenomShift;
 
 	if(seekCluster > fp->clusterCnt){
 		fp->cluster = fat_func.getNCluster(fp, seekCluster - fp->clusterCnt, fp->cluster);
@@ -755,7 +759,7 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 	}
 
 	void *pbuf;
-	int i, cnt;
+	int cnt;
 	uint32_t var, cluster, strn1, strn2, rest;
 
 	if(fp->fileSize < (fp->seekBytes + n)){ // 要求サイズがファイルサイズを超えていた場合
@@ -774,7 +778,7 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 				memcpy(pbuf, (uint8_t*)&fbuf[fp->seekBytes & 511], strn1); // 一回目の読込み
 				pbuf += strn1; // ポインタを一回目の読込み分進める
 				var = n - strn1; // 読込み数から一回目の読込み分引く
-				cnt = var / fat.bytesPerCluster, rest = var & (fat.bytesPerCluster - 1) ; // セクタ数と残りセクタ
+				cnt = var >> fat.clusterDenomShift, rest = var & (fat.bytesPerCluster - 1) ; // セクタ数と残りセクタ
 				if(++fp->seekSector > fat.sectorsPerCluster){ // 次のシークセクタが次のクラスタにまたがっていた場合の処理
 					cluster = fat_func.getNCluster(fp, 1, fp->cluster);
 				}
@@ -782,10 +786,10 @@ size_t my_fread(void *buf, size_t size, size_t count, MY_FILE *fp)
 			} else { // strn1 == 512
 				pbuf = buf;
 				strn1 = 0;
-				cnt = n / fat.bytesPerCluster, rest = n & (fat.bytesPerCluster - 1);
+				cnt = n >> fat.clusterDenomShift, rest = n & (fat.bytesPerCluster - 1);
 			}
 
-			for(i = 0;i < cnt;i++){
+			while(cnt--){
 				readFileSectors(fp, pbuf, fat.sectorsPerCluster);
 				pbuf += fat.bytesPerCluster;
 			}

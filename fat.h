@@ -116,6 +116,7 @@ volatile struct {
 	         sectorsPerCluster, \
 	         sectorsPerFAT;
 	uint8_t fsType, \
+			clusterDenomShift, \
 			currentDirName[54];
 
 } fat;
