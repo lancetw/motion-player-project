@@ -8,9 +8,17 @@ FORMAT = ihex
 # Target file name (without extension).
 TARGET = stm32f4_motion_player
 
+# IJG libjpeg directory
+JPEG_DIR = ./jpeg-7
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = main.c stm32f4xx_it.c fat.c sd.c dojpeg.c mpool.c lcd.c icon.c pcf_font.c mjpeg.c aac.c mp3.c sound.c fft.c fx.c xpt2046.c settings.c xmodem.c usart.c delay.c
+SRC = main.c stm32f4xx_it.c fat.c sd.c dojpeg.c mpool.c lcd.c icon.c pcf_font.c mjpeg.c aac.c mp3.c sound.c fft.c fx.c xpt2046.c settings.c xmodem.c usart.c delay.c \
+$(JPEG_DIR)/jdapimin.c $(JPEG_DIR)/jerror.c $(JPEG_DIR)/jdatasrc.c $(JPEG_DIR)/wrppm.c $(JPEG_DIR)/jdapistd.c $(JPEG_DIR)/jmemmgr.c \
+$(JPEG_DIR)/jdmarker.c $(JPEG_DIR)/jdinput.c $(JPEG_DIR)/jcomapi.c $(JPEG_DIR)/jdmaster.c $(JPEG_DIR)/jmemnobs.c $(JPEG_DIR)/jutils.c \
+$(JPEG_DIR)/jquant1.c $(JPEG_DIR)/jquant2.c $(JPEG_DIR)/jddctmgr.c $(JPEG_DIR)/jdarith.c $(JPEG_DIR)/jdcoefct.c $(JPEG_DIR)/jdmainct.c \
+$(JPEG_DIR)/jdcolor.c $(JPEG_DIR)/jdsample.c $(JPEG_DIR)/jdpostct.c $(JPEG_DIR)/jdhuff.c $(JPEG_DIR)/jdmerge.c $(JPEG_DIR)/jidctint.c \
+$(JPEG_DIR)/jidctfst.c $(JPEG_DIR)/jaricom.c
+
 
 BINARY = music_underbar_320x80.bin music_underbar_320x80_alpha.bin \
 music_art_default_74x74.bin \
@@ -122,7 +130,7 @@ MATH_LIB = #-lm
 #    --cref:    add cross reference to  map file
 LDFLAGS = -T stm32_flash.ld
 #LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(DIRLIB)) -lcm4 -lstd -ldsp -lc -ljpeg -laac -lmp3
+LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(DIRLIB)) -lcm4 -lstd -ldsp -lc -laac -lmp3
 
 # ---------------------------------------------------------------------------
 
@@ -164,9 +172,9 @@ ALL_ASFLAGS = $(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 
 
 # Default target.
-all: gccversion build sizeafter
+all: build gccversion sizeafter
 
-build: cm4lib stdlib elf hex lss sym
+build: cm4lib stdlib dsplib libaac libmp3 elf hex lss sym 
 
 elf: $(TARGET).elf
 hex: $(TARGET).hex
@@ -183,7 +191,10 @@ stdlib:	lib
 dsplib:
 	$(MAKE) -C ./lib/CMSIS/DSP_Lib/Source
 
-mp3:	
+libaac:
+	$(MAKE) -C ./aac
+
+libmp3:	
 	$(MAKE) -C ./mp3	
 
 jpeg:	
@@ -249,9 +260,7 @@ gccversion :
 %.o : %.bin
 	$(OBJCOPY) -I binary -O elf32-littlearm -B armv5 --rename-section .data=.rodata,alloc,load,readonly,data,contents $< $@
 
-distclean: clean
-	$(MAKE) -C lib clean
-
+distclean: clean libclean
 
 # Target: clean project.
 clean:
@@ -268,6 +277,14 @@ clean:
 	$(REMOVE) $(SRC:.c=.s)
 	$(REMOVE) $(SRC:.c=.d)
 	$(REMOVE) .dep/*
+
+libclean:
+	$(MAKE) -C ./lib/CMSIS/ST/STM32F4xx clean
+	$(MAKE) -C ./lib/STM32F4xx_StdPeriph_Driver clean
+	$(MAKE) -C ./lib/CMSIS/DSP_Lib/Source clean
+	$(MAKE) -C ./aac clean
+	$(MAKE) -C ./mp3 clean
+	$(MAKE) -C ./jpeg-7 clean
 
 
 # Include the dependency files.
