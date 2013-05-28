@@ -1,0 +1,7 @@
+#Sat May 25 04:35:23 JST 2013
+eclipse.preferences.version=1
+environment/project/org.eclipse.cdt.cross.arm.gnu.summon.macosx.elf.debug.481981834/PATH/delimiter=\:
+environment/project/org.eclipse.cdt.cross.arm.gnu.summon.macosx.elf.debug.481981834/PATH/operation=replace
+environment/project/org.eclipse.cdt.cross.arm.gnu.summon.macosx.elf.debug.481981834/PATH/value=/usr/local/arm/bin\:/usr/bin\:/bin
+environment/project/org.eclipse.cdt.cross.arm.gnu.summon.macosx.elf.debug.481981834/append=true
+environment/project/org.eclipse.cdt.cross.arm.gnu.summon.macosx.elf.debug.481981834/appendContributed=true

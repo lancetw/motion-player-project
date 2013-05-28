@@ -428,6 +428,9 @@ $(ACLOCAL_M4): # $(am__aclocal_m4_deps)
 	$(am__cd) $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
 $(am__aclocal_m4_deps):
 
+#libjpeg.a : %.o
+#	$(AR) rcu $@ $<	
+
 jconfig.h: stamp-h1
 	@if test ! -f $@; then \
 	  rm -f stamp-h1; \

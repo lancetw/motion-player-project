@@ -1011,10 +1011,10 @@ int PlayMotionJpeg(int id){
 
 	switch(SystemCoreClock){
 	case 168000000:
-		limitter = 0.88f;
+		limitter = 0.91f;
 		break;
 	case 200000000:
-		limitter = 0.92f;
+		limitter = 0.93f;
 		break;
 	case 225000000:
 		limitter = 0.95f;
