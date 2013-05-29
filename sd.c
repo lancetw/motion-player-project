@@ -903,7 +903,7 @@ SD_INIT:
 	debug.printf("\r\nMax Clock Frequency:%dMHz", cardInfo.maxClkFreq);
 	debug.printf("\r\nTotal Blocks:%d", cardInfo.totalBlocks);
 	debug.printf("\r\nccc:%04x", ccc);
-	debug.printf("\r\nCard Capacity:%0.2fGB", (float)(((float)cardInfo.totalBlocks / 1000000000UL) * 512));
+	debug.printf("\r\nCard Capacity:%0.2fGB", (float)cardInfo.totalBlocks / 1000000000.0f * 512.0f);
 
 	return 0;
 }

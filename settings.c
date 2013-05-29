@@ -612,7 +612,7 @@ void *SETTING_DISPLAY_CARDINFO(void *arg)
 	sprintf(s, "Total Blocks:%d\n", cardInfo.totalBlocks);
 	LCDPutString(s, WHITE);
 
-	sprintf(s, "Card Capacity:%0.2fGB\n", (float)(((float)cardInfo.totalBlocks / 1000000000UL) * 512));
+	sprintf(s, "Card Capacity:%0.2fGB\n", (float)cardInfo.totalBlocks / 1000000000.0f * 512.0f);
 	LCDPutString(s, WHITE);
 
 	return NULL;
