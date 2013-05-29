@@ -20,34 +20,7 @@ $(JPEG_DIR)/jdcolor.c $(JPEG_DIR)/jdsample.c $(JPEG_DIR)/jdpostct.c $(JPEG_DIR)/
 $(JPEG_DIR)/jidctfst.c $(JPEG_DIR)/jaricom.c
 
 
-BINARY = music_underbar_320x80.bin music_underbar_320x80_alpha.bin \
-music_art_default_74x74.bin \
-seek_circle_16x16.bin seek_circle_16x16_alpha.bin \
-abort_icon_40x40.bin play_icon_40x40_alpha.bin \
-next_right_32x17.bin next_right_32x17_alpha.bin next_left_32x17.bin next_left_32x17_alpha.bin exit_play_20x13.bin exit_play_20x13_alpha.bin \
-menubar_320x22.bin menubar_320x22_alpha.bin \
-pic_left_arrow_30x30.bin pic_left_arrow_30x30_alpha.bin pic_right_arrow_30x30.bin pic_right_arrow_30x30_alpha.bin \
-bass_base_24x18.bin bass_base_24x18_alpha.bin \
-bass_level1_24x18.bin bass_level1_24x18_alpha.bin \
-bass_level2_24x18.bin bass_level2_24x18_alpha.bin \
-bass_level3_24x18.bin bass_level3_24x18_alpha.bin \
-reverb_base_24x18.bin  reverb_base_24x18_alpha.bin \
-reverb_level1_24x18.bin  reverb_level1_24x18_alpha.bin \
-reverb_level2_24x18.bin  reverb_level2_24x18_alpha.bin \
-reverb_level3_24x18.bin  reverb_level3_24x18_alpha.bin \
-vocal_base_24x18.bin vocal_base_24x18_alpha.bin \
-vocal_canceled_24x18.bin vocal_canceled_24x18_alpha.bin \
-radiobutton_checked_22x22.bin radiobutton_unchecked_22x22.bin radiobutton_22x22_alpha.bin \
-card_22x22.bin card_22x22_alpha.bin \
-cpu_22x22.bin cpu_22x22_alpha.bin \
-display_22x22.bin display_22x22_alpha.bin \
-debug_22x22.bin debug_22x22_alpha.bin \
-info_22x22.bin info_22x22_alpha.bin \
-parent_arrow_22x22.bin parent_arrow_22x22_alpha.bin \
-select_22x22.bin select_22x22_alpha.bin
-
-
-ASRC =
+ASRC = images.s
 
 # Optimization level, can be [0, 1, 2, 3, s]. 
 # 0 = turn off optimization. s = optimize for size.
@@ -100,7 +73,7 @@ STARTUP = lib/CMSIS/ST/STM32F4xx/Source/Templates/startup_stm32f4xx.o
 #  -ahlms:    create listing
 #  -gstabs:   have the assembler create line number information
 #ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs 
-ASFLAGS = -Wa,-gstabs
+ASFLAGS = #-Wa,-gstabs
 
 
 
@@ -136,9 +109,9 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(
 
 # Define directories, if needed.
 DIRINC = .
-#DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb2 /usr/local/arm/lib/gcc/arm-none-eabi/4.4.1/thumb2 ./jpeg-7 ./aac ./mp3
-DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb/cortex-m4 /usr/local/arm/lib/gcc/arm-none-eabi/4.6.2/thumb/cortex-m4 ./jpeg-7 ./aac ./mp3
-#DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb/cortex-m4/float-abi-hard/fpuv4-sp-d16 /usr/local/arm/lib/gcc/arm-none-eabi/4.6.2/thumb/cortex-m4/float-abi-hard/fpuv4-sp-d16 ./jpeg-7 ./aac ./mp3
+#DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb2 /usr/local/arm/lib/gcc/arm-none-eabi/4.4.1/thumb2 ./aac ./mp3
+DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb/cortex-m4 /usr/local/arm/lib/gcc/arm-none-eabi/4.6.2/thumb/cortex-m4 ./aac ./mp3
+#DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb/cortex-m4/float-abi-hard/fpuv4-sp-d16 /usr/local/arm/lib/gcc/arm-none-eabi/4.6.2/thumb/cortex-m4/float-abi-hard/fpuv4-sp-d16 ./aac ./mp3
 
 # Define programs and commands.
 SHELL = sh
@@ -252,13 +225,10 @@ gccversion :
 
 
 # Assemble: create object files from assembler source files.
-%.o : %.S
+%.o : %.s
 	@echo
 	@echo $(MSG_ASSEMBLING) $<
 	$(CC) -c $(ALL_ASFLAGS) $< -o $@
-
-%.o : %.bin
-	$(OBJCOPY) -I binary -O elf32-littlearm -B armv5 --rename-section .data=.rodata,alloc,load,readonly,data,contents $< $@
 
 distclean: clean libclean
 

@@ -80,161 +80,97 @@ extern void Update_Bass_Boost_Icon(uint8_t index);
 extern void Update_Reverb_Effect_Icon(uint8_t index);
 extern void Update_Vocal_Canceler_Icon(uint8_t index);
 
-extern const uint16_t _binary_music_underbar_320x80_bin_start[], _binary_music_underbar_320x80_bin_end[], _binary_music_underbar_320x80_bin_size[];
-extern const uint16_t _binary_music_underbar_320x80_alpha_bin_start[], _binary_music_underbar_320x80_alpha_bin_end[], _binary_music_underbar_320x80_alpha_bin_size[];
 
-extern const uint16_t _binary_music_art_default_74x74_bin_start[], _binary_music_art_default_74x74_bin_end[], _binary_music_art_default_74x74_bin_size[];
 
-extern const uint16_t _binary_seek_circle_16x16_bin_start[], _binary_seek_circle_16x16_bin_end[], _binary_seek_circle_16x16_bin_size[];
-extern const uint16_t _binary_seek_circle_16x16_alpha_bin_start[], _binary_seek_circle_16x16_alpha_bin_end[], _binary_seek_circle_16x16_alpha_bin_size[];
+extern const uint16_t music_underbar_320x80[],_sizeof_music_underbar_320x80[];
+extern const uint16_t music_underbar_320x80_alpha[],_sizeof_music_underbar_320x80_alpha[];
 
-//extern const uint16_t _binary_play_icon_40x40_bin_start[], _binary_play_icon_40x40_bin_end[], _binary_play_icon_40x40_bin_size[];
-extern const uint16_t _binary_play_icon_40x40_alpha_bin_start[], _binary_play_icon_40x40_alpha_bin_end[], _binary_play_icon_40x40_alpha_bin_size[];
+extern const uint16_t music_art_default_74x74[],_sizeof_music_art_default_74x74[];
 
-extern const uint16_t _binary_next_right_32x17_bin_start[], _binary_next_right_32x17_bin_end[], _binary_next_right_32x17_bin_size[];
-extern const uint16_t _binary_next_right_32x17_alpha_bin_start[], _binary_next_right_32x17_alpha_bin_end[], _binary_next_right_32x17_alpha_bin_size[];
+extern const uint16_t seek_circle_16x16[],_sizeof_seek_circle_16x16[];
+extern const uint16_t seek_circle_16x16_alpha[],_sizeof_seek_circle_16x16_alpha[];
 
-extern const uint16_t _binary_next_left_32x17_bin_start[], _binary_next_left_32x17_bin_end[], _binary_next_left_32x17_bin_size[];
-extern const uint16_t _binary_next_left_32x17_alpha_bin_start[], _binary_next_left_32x17_alpha_bin_end[], _binary_next_left_32x17_alpha_bin_size[];
+extern const uint16_t abort_icon_40x40[],_sizeof_abort_icon_40x40[];
 
-extern const uint16_t _binary_exit_play_20x13_bin_start[], _binary_exit_play_20x13_bin_end[], _binary_exit_play_20x13_bin_size[];
-extern const uint16_t _binary_exit_play_20x13_alpha_bin_start[], _binary_exit_play_20x13_alpha_bin_end[], _binary_exit_play_20x13_alpha_bin_size[];
+extern const uint16_t play_icon_40x40_alpha[],_sizeof_play_icon_40x40_alpha[];
 
-extern const uint16_t _binary_abort_icon_40x40_bin_start[], _binary_abort_icon_40x40_bin_end[], _binary_abort_icon_40x40_bin_size[];
 
-extern const uint16_t _binary_menubar_320x22_bin_start[], _binary_menubar_320x22_bin_end[], _binary_menubar_320x22_bin_size[];
-extern const uint16_t _binary_menubar_320x22_alpha_bin_start[], _binary_menubar_320x22_alpha_bin_end[], _binary_menubar_320x22_alpha_bin_size[];
+extern const uint16_t next_right_32x17[],_sizeof_next_right_32x17[];
+extern const uint16_t next_right_32x17_alpha[],_sizeof_next_right_32x17_alpha[];
 
-extern const uint16_t _binary_pic_right_arrow_30x30_bin_start[], _binary_pic_right_arrow_30x30_bin_end[], _binary_pic_right_arrow_30x30_bin_size[];
-extern const uint16_t _binary_pic_right_arrow_30x30_alpha_bin_start[], _binary_pic_right_arrow_30x30_alpha_bin_end[], _binary_pic_right_arrow_30x30_alpha_bin_size[];
+extern const uint16_t next_left_32x17[],_sizeof_next_left_32x17[];
+extern const uint16_t next_left_32x17_alpha[],_sizeof_next_left_32x17_alpha[];
 
-extern const uint16_t _binary_pic_left_arrow_30x30_bin_start[], _binary_pic_left_arrow_30x30_bin_end[], _binary_pic_left_arrow_30x30_bin_size[];
-extern const uint16_t _binary_pic_left_arrow_30x30_alpha_bin_start[], _binary_pic_left_arrow_30x30_alpha_bin_end[], _binary_pic_left_arrow_30x30_alpha_bin_size[];
+extern const uint16_t exit_play_20x13[],_sizeof_exit_play_20x13[];
+extern const uint16_t exit_play_20x13_alpha[],_sizeof_exit_play_20x13_alpha[];
 
-extern const uint16_t _binary_bass_base_24x18_bin_start[], _binary_bass_base_24x18_bin_end[], _binary_bass_base_24x18_bin_size[];
-extern const uint16_t _binary_bass_base_24x18_alpha_bin_start[], _binary_bass_base_24x18_alpha_bin_end[], _binary_bass_base_24x18_alpha_bin_size[];
+extern const uint16_t menubar_320x22[],_sizeof_menubar_320x22[];
+extern const uint16_t menubar_320x22_alpha[],_sizeof_menubar_320x22_alpha[];
 
-extern const uint16_t _binary_bass_level1_24x18_bin_start[], _binary_bass_level1_24x18_bin_end[], _binary_bass_level1_24x18_bin_size[];
-extern const uint16_t _binary_bass_level1_24x18_alpha_bin_start[], _binary_bass_level1_24x18_alpha_bin_end[], _binary_bass_level1_24x18_alpha_bin_size[];
+extern const uint16_t pic_right_arrow_30x30[],_sizeof_pic_right_arrow_30x30[];
+extern const uint16_t pic_right_arrow_30x30_alpha[],_sizeof_pic_right_arrow_30x30_alpha[];
 
-extern const uint16_t _binary_bass_level2_24x18_bin_start[], _binary_bass_level2_24x18_bin_end[], _binary_bass_level2_24x18_bin_size[];
-extern const uint16_t _binary_bass_level2_24x18_alpha_bin_start[], _binary_bass_level2_24x18_alpha_bin_end[], _binary_bass_level2_24x18_alpha_bin_size[];
+extern const uint16_t pic_left_arrow_30x30[],_sizeof_pic_left_arrow_30x30[];
+extern const uint16_t pic_left_arrow_30x30_alpha[],_sizeof_pic_left_arrow_30x30_alpha[];
 
-extern const uint16_t _binary_bass_level3_24x18_bin_start[], _binary_bass_level3_24x18_bin_end[], _binary_bass_level3_24x18_bin_size[];
-extern const uint16_t _binary_bass_level3_24x18_alpha_bin_start[], _binary_bass_level3_24x18_alpha_bin_end[], _binary_bass_level3_24x18_alpha_bin_size[];
+extern const uint16_t bass_base_24x18[],_sizeof_bass_base_24x18[];
+extern const uint16_t bass_base_24x18_alpha[],_sizeof_bass_base_24x18_alpha[];
 
-extern const uint16_t _binary_reverb_base_24x18_bin_start[], _binary_reverb_base_24x18_bin_end[], _binary_reverb_base_24x18_bin_size[];
-extern const uint16_t _binary_reverb_base_24x18_alpha_bin_start[], _binary_reverb_base_24x18_alpha_bin_end[], _binary_reverb_base_24x18_alpha_bin_size[];
+extern const uint16_t bass_level1_24x18[],_sizeof_bass_level1_24x18[];
+extern const uint16_t bass_level1_24x18_alpha[],_sizeof_bass_level1_24x18_alpha[];
 
-extern const uint16_t _binary_reverb_level1_24x18_bin_start[], _binary_reverb_level1_24x18_bin_end[], _binary_reverb_level1_24x18_bin_size[];
-extern const uint16_t _binary_reverb_level1_24x18_alpha_bin_start[], _binary_reverb_level1_24x18_alpha_bin_end[], _binary_reverb_level1_24x18_alpha_bin_size[];
+extern const uint16_t bass_level2_24x18[],_sizeof_bass_level2_24x18[];
+extern const uint16_t bass_level2_24x18_alpha[],_sizeof_bass_level2_24x18_alpha[];
 
-extern const uint16_t _binary_reverb_level2_24x18_bin_start[], _binary_reverb_level2_24x18_bin_end[], _binary_reverb_level2_24x18_bin_size[];
-extern const uint16_t _binary_reverb_level2_24x18_alpha_bin_start[], _binary_reverb_level2_24x18_alpha_bin_end[], _binary_reverb_level2_24x18_alpha_bin_size[];
+extern const uint16_t bass_level3_24x18[],_sizeof_bass_level3_24x18[];
+extern const uint16_t bass_level3_24x18_alpha[],_sizeof_bass_level3_24x18_alpha[];
 
-extern const uint16_t _binary_reverb_level3_24x18_bin_start[], _binary_reverb_level3_24x18_bin_end[], _binary_reverb_level3_24x18_bin_size[];
-extern const uint16_t _binary_reverb_level3_24x18_alpha_bin_start[], _binary_reverb_level3_24x18_alpha_bin_end[], _binary_reverb_level3_24x18_alpha_bin_size[];
+extern const uint16_t reverb_base_24x18[],_sizeof_reverb_base_24x18[];
+extern const uint16_t reverb_base_24x18_alpha[],_sizeof_reverb_base_24x18_alpha[];
 
-extern const uint16_t _binary_vocal_base_24x18_bin_start[], _binary_vocal_base_24x18_bin_end[], _binary_vocal_base_24x18_bin_size[];
-extern const uint16_t _binary_vocal_base_24x18_alpha_bin_start[], _binary_vocal_base_24x18_alpha_bin_end[], _binary_vocal_base_24x18_alpha_bin_size[];
+extern const uint16_t reverb_level1_24x18[],_sizeof_reverb_level1_24x18[];
+extern const uint16_t reverb_level1_24x18_alpha[],_sizeof_reverb_level1_24x18_alpha[];
 
-extern const uint16_t _binary_vocal_canceled_24x18_bin_start[], _binary_vocal_canceled_24x18_bin_end[], _binary_vocal_canceled_24x18_bin_size[];
-extern const uint16_t _binary_vocal_canceled_24x18_alpha_bin_start[], _binary_vocal_canceled_24x18_alpha_bin_end[], _binary_vocal_canceled_24x18_alpha_bin_size[];
+extern const uint16_t reverb_level2_24x18[],_sizeof_reverb_level2_24x18[];
+extern const uint16_t reverb_level2_24x18_alpha[],_sizeof_reverb_level2_24x18_alpha[];
 
-extern const uint16_t _binary_radiobutton_checked_22x22_bin_start[], _binary_radiobutton_checked_22x22_bin_end[], _binary_radiobutton_checked_22x22_bin_size[];
-extern const uint16_t _binary_radiobutton_unchecked_22x22_bin_start[], _binary_radiobutton_unchecked_22x22_bin_end[], _binary_radiobutton_unchecked_22x22_bin_size[];
-extern const uint16_t _binary_radiobutton_22x22_alpha_bin_start[], _binary_radiobutton_22x22_alpha_bin_end[], _binary_radiobutton_22x22_alpha_bin_size[];
+extern const uint16_t reverb_level3_24x18[],_sizeof_reverb_level3_24x18[];
+extern const uint16_t reverb_level3_24x18_alpha[],_sizeof_reverb_level3_24x18_alpha[];
 
-extern const uint16_t _binary_card_22x22_bin_start[], _binary_card_22x22_bin_end[], _binary_card_22x22_bin_size[];
-extern const uint16_t _binary_card_22x22_alpha_bin_start[], _binary_card_22x22_alpha_bin_end[], _binary_card_22x22_alpha_bin_size[];
+extern const uint16_t vocal_base_24x18[],_sizeof_vocal_base_24x18[];
+extern const uint16_t vocal_base_24x18_alpha[],_sizeof_vocal_base_24x18_alpha[];
 
-extern const uint16_t _binary_cpu_22x22_bin_start[], _binary_cpu_22x22_bin_end[], _binary_cpu_22x22_bin_size[];
-extern const uint16_t _binary_cpu_22x22_alpha_bin_start[], _binary_cpu_22x22_alpha_bin_end[], _binary_cpu_22x22_alpha_bin_size[];
+extern const uint16_t vocal_canceled_24x18[],_sizeof_vocal_canceled_24x18[];
+extern const uint16_t vocal_canceled_24x18_alpha[],_sizeof_vocal_canceled_24x18_alpha[];
 
-extern const uint16_t _binary_display_22x22_bin_start[], _binary_display_22x22_bin_end[], _binary_display_22x22_bin_size[];
-extern const uint16_t _binary_display_22x22_alpha_bin_start[], _binary_display_22x22_alpha_bin_end[], _binary_display_22x22_alpha_bin_size[];
+extern const uint16_t radiobutton_checked_22x22[],_sizeof_radiobutton_checked_22x22[];
+extern const uint16_t radiobutton_unchecked_22x22[],_sizeof_radiobutton_unchecked_22x22[];
+extern const uint16_t radiobutton_22x22_alpha[],_sizeof_radiobutton_22x22_alpha[];
 
-extern const uint16_t _binary_debug_22x22_bin_start[], _binary_debug_22x22_bin_end[], _binary_debug_22x22_bin_size[];
-extern const uint16_t _binary_debug_22x22_alpha_bin_start[], _binary_debug_22x22_alpha_bin_end[], _binary_debug_22x22_alpha_bin_size[];
-
-extern const uint16_t _binary_info_22x22_bin_start[], _binary_info_22x22_bin_end[], _binary_info_22x22_bin_size[];
-extern const uint16_t _binary_info_22x22_alpha_bin_start[], _binary_info_22x22_alpha_bin_end[], _binary_info_22x22_alpha_bin_size[];
-
-extern const uint16_t _binary_parent_arrow_22x22_bin_start[], _binary_parent_arrow_22x22_bin_end[], _binary_parent_arrow_22x22_bin_size[];
-extern const uint16_t _binary_parent_arrow_22x22_alpha_bin_start[], _binary_parent_arrow_22x22_alpha_bin_end[], _binary_parent_arrow_22x22_alpha_bin_size[];
-
-extern const uint16_t _binary_select_22x22_bin_start[], _binary_select_22x22_bin_end[], _binary_select_22x22_bin_size[];
-extern const uint16_t _binary_select_22x22_alpha_bin_start[], _binary_select_22x22_alpha_bin_end[], _binary_select_22x22_alpha_bin_size[];
+extern const uint16_t card_22x22[],_sizeof_card_22x22[];
+extern const uint16_t card_22x22_alpha[],_sizeof_card_22x22_alpha[];
 
 
 
+extern const uint16_t cpu_22x22[],_sizeof_cpu_22x22[];
+extern const uint16_t cpu_22x22_alpha[],_sizeof_cpu_22x22_alpha[];
 
-#define music_underbar_320x80 _binary_music_underbar_320x80_bin_start
-#define music_underbar_320x80_alpha _binary_music_underbar_320x80_alpha_bin_start
 
-#define music_art_default_74x74 _binary_music_art_default_74x74_bin_start
+extern const uint16_t display_22x22[],_sizeof_display_22x22[];
+extern const uint16_t display_22x22_alpha[],_sizeof_display_22x22_alpha[];
 
-#define seek_circle_16x16 _binary_seek_circle_16x16_bin_start
-#define seek_circle_16x16_alpha _binary_seek_circle_16x16_alpha_bin_start
+extern const uint16_t debug_22x22[],_sizeof_debug_22x22[];
+extern const uint16_t debug_22x22_alpha[],_sizeof_debug_22x22_alpha[];
 
-#define abort_icon_40x40 _binary_abort_icon_40x40_bin_start
-// #define play_icon_40x40 _binary_play_icon_40x40_bin_start
-#define play_icon_40x40_alpha _binary_play_icon_40x40_alpha_bin_start
+extern const uint16_t info_22x22[],_sizeof_info_22x22[];
+extern const uint16_t info_22x22_alpha[],_sizeof_info_22x22[];
 
-#define menubar_320x22 _binary_menubar_320x22_bin_start
-#define menubar_320x22_alpha _binary_menubar_320x22_alpha_bin_start
+extern const uint16_t parent_arrow_22x22[],_sizeof_parent_arrow_22x22[];
+extern const uint16_t parent_arrow_22x22_alpha[],_sizeof_parent_arrow_22x22_alpha[];
 
-#define next_right_32x17 _binary_next_right_32x17_bin_start
-#define next_right_32x17_alpha _binary_next_right_32x17_alpha_bin_start
+extern const uint16_t select_22x22[],_sizeof_select_22x22[];
+extern const uint16_t select_22x22_alpha[],_sizeof_select_22x22_alpha[];
 
-#define next_left_32x17 _binary_next_left_32x17_bin_start
-#define next_left_32x17_alpha _binary_next_left_32x17_alpha_bin_start
-
-#define exit_play_20x13 _binary_exit_play_20x13_bin_start
-#define exit_play_20x13_alpha _binary_exit_play_20x13_alpha_bin_start
-
-#define pic_right_arrow_30x30 _binary_pic_right_arrow_30x30_bin_start
-#define pic_right_arrow_30x30_alpha _binary_pic_right_arrow_30x30_alpha_bin_start
-
-#define pic_left_arrow_30x30 _binary_pic_left_arrow_30x30_bin_start
-#define pic_left_arrow_30x30_alpha _binary_pic_left_arrow_30x30_alpha_bin_start
-
-#define bass_base_24x18 _binary_bass_base_24x18_bin_start
-#define bass_base_24x18_alpha _binary_bass_base_24x18_alpha_bin_start
-
-#define bass_level1_24x18 _binary_bass_level1_24x18_bin_start
-#define bass_level1_24x18_alpha _binary_bass_level1_24x18_alpha_bin_start
-
-#define bass_level2_24x18 _binary_bass_level2_24x18_bin_start
-#define bass_level2_24x18_alpha _binary_bass_level2_24x18_alpha_bin_start
-
-#define bass_level3_24x18 _binary_bass_level3_24x18_bin_start
-#define bass_level3_24x18_alpha _binary_bass_level3_24x18_alpha_bin_start
-
-#define reverb_base_24x18 _binary_reverb_base_24x18_bin_start
-#define reverb_base_24x18_alpha _binary_reverb_base_24x18_alpha_bin_start
-
-#define reverb_level1_24x18 _binary_reverb_level1_24x18_bin_start
-#define reverb_level1_24x18_alpha _binary_reverb_level1_24x18_alpha_bin_start
-
-#define reverb_level2_24x18 _binary_reverb_level2_24x18_bin_start
-#define reverb_level2_24x18_alpha _binary_reverb_level2_24x18_alpha_bin_start
-
-#define reverb_level3_24x18 _binary_reverb_level3_24x18_bin_start
-#define reverb_level3_24x18_alpha _binary_reverb_level3_24x18_alpha_bin_start
-
-#define vocal_base_24x18 _binary_vocal_base_24x18_bin_start
-#define vocal_base_24x18_alpha _binary_vocal_base_24x18_alpha_bin_start
-
-#define vocal_canceled_24x18 _binary_vocal_canceled_24x18_bin_start
-#define vocal_canceled_24x18_alpha _binary_vocal_canceled_24x18_alpha_bin_start
-
-#define radiobutton_checked_22x22 _binary_radiobutton_checked_22x22_bin_start
-#define radiobutton_unchecked_22x22 _binary_radiobutton_unchecked_22x22_bin_start
-#define radiobutton_22x22_alpha _binary_radiobutton_22x22_alpha_bin_start
-
-#define card_22x22 _binary_card_22x22_bin_start
-#define card_22x22_alpha _binary_card_22x22_alpha_bin_start
 
 
 extern const uint16_t navigation_playing_patch_32x32[];

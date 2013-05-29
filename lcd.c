@@ -1011,7 +1011,7 @@ void LCDPrintFileList()
 			color = DIR_COLOR; // dircolor
 			fileSizeStr[0] = '\0';
 			if(strncmp(fileNameStr, "..", 2) == 0){
-				LCDPutIcon(2, cly - 5, 22, 22, _binary_parent_arrow_22x22_bin_start, _binary_parent_arrow_22x22_alpha_bin_start);
+				LCDPutIcon(2, cly - 5, 22, 22, parent_arrow_22x22, parent_arrow_22x22_alpha);
 			} else {
 				LCDPutIcon(2, cly - 5, 22, 22, folder_22x22, folder_22x22_alpha);
 			}
@@ -1095,7 +1095,7 @@ void LCDPrintSettingsList(char type, int select_id, settings_item_typedef *item)
 
 		for(i = idEntry;i < (idEntry + step);i++){
 			if(strncmp(settings_p[i].name, "..", 2) == 0){
-				LCDPutIcon(2, cly - 5, 22, 22, _binary_parent_arrow_22x22_bin_start, _binary_parent_arrow_22x22_alpha_bin_start);
+				LCDPutIcon(2, cly - 5, 22, 22, parent_arrow_22x22, parent_arrow_22x22_alpha);
 			} else {
 				if(i == selected_entry){
 					LCDPutIcon(2, cly - 3, 22, 22, radiobutton_checked_22x22, radiobutton_22x22_alpha);
@@ -1116,12 +1116,12 @@ void LCDPrintSettingsList(char type, int select_id, settings_item_typedef *item)
 	} else {
 		for(i = idEntry;i < (idEntry + step);i++){
 			if(strncmp(settings_p[i].name, "..", 2) == 0){
-				LCDPutIcon(2, cly - 5, 22, 22, _binary_parent_arrow_22x22_bin_start, _binary_parent_arrow_22x22_alpha_bin_start);
+				LCDPutIcon(2, cly - 5, 22, 22, parent_arrow_22x22, parent_arrow_22x22_alpha);
 			} else {
 				if(settings_p[i].icon != NULL){
 					LCDPutIcon(2, cly - 5, 22, 22, settings_p[i].icon->data, settings_p[i].icon->alpha);
 				} else {
-					LCDPutIcon(2, cly - 5, 22, 22, _binary_select_22x22_bin_start, _binary_select_22x22_alpha_bin_start);
+					LCDPutIcon(2, cly - 5, 22, 22, select_22x22, select_22x22_alpha);
 				}
 			}
 			clx = 28;

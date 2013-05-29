@@ -42,11 +42,11 @@ settings_item_typedef settings_item_prehalve;
 
 const icon_ptr_typedef music_icon[] = {onpu_22x22, onpu_22x22_alpha};
 const icon_ptr_typedef folder_icon[] = {folder_22x22, folder_22x22_alpha};
-const icon_ptr_typedef card_icon[] = {_binary_card_22x22_bin_start, _binary_card_22x22_alpha_bin_start};
-const icon_ptr_typedef cpu_icon[] = {_binary_cpu_22x22_bin_start, _binary_cpu_22x22_alpha_bin_start};
-const icon_ptr_typedef display_icon[] = {_binary_display_22x22_bin_start, _binary_display_22x22_alpha_bin_start};
-const icon_ptr_typedef debug_icon[] = {_binary_debug_22x22_bin_start, _binary_debug_22x22_alpha_bin_start};
-const icon_ptr_typedef info_icon[] = {_binary_info_22x22_bin_start, _binary_info_22x22_alpha_bin_start};
+const icon_ptr_typedef card_icon[] = {card_22x22, card_22x22_alpha};
+const icon_ptr_typedef cpu_icon[] = {cpu_22x22, cpu_22x22_alpha};
+const icon_ptr_typedef display_icon[] = {display_22x22, display_22x22_alpha};
+const icon_ptr_typedef debug_icon[] = {debug_22x22, debug_22x22_alpha};
+const icon_ptr_typedef info_icon[] = {info_22x22, info_22x22_alpha};
 
 
 const settings_list_typedef settings_root_list[] = {
