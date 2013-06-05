@@ -3,7 +3,6 @@
  *		by Tonsuke
  *
  *		v1.7
- *
  *		2013/06/05
  *
  *		http://motionplayer.wiki.fc2.com
