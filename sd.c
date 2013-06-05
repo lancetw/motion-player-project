@@ -37,18 +37,19 @@ void EXTI9_5_IRQHandler(void) // assigned for SD card detection (push/pull).
 	}
 }
 
+/*
 inline void SD_LowLevel_DMA_RxConfig(uint32_t *BufferDST)
 {
   DMA_InitTypeDef DMA_InitStructure;
 
   DMA_ClearFlag(DMA2_Stream3, DMA_FLAG_FEIF3 | DMA_FLAG_DMEIF3 | DMA_FLAG_TEIF3 | DMA_FLAG_HTIF3 | DMA_FLAG_TCIF3);
 
-  /*!< DMA2 Channel4 disable */
+  // !< DMA2 Channel4 disable
   DMA_Cmd(DMA2_Stream3, DISABLE);
 
   DMA_DeInit(DMA2_Stream3);
 
-  /*!< DMA2 Channel4 Config */
+  // !< DMA2 Channel4 Config
   DMA_InitStructure.DMA_Channel = DMA_Channel_4;
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&SDIO->FIFO;
   DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)BufferDST;
@@ -68,9 +69,10 @@ inline void SD_LowLevel_DMA_RxConfig(uint32_t *BufferDST)
 
   DMA_FlowControllerConfig(DMA2_Stream3, DMA_FlowCtrl_Peripheral);
 
-  /*!< DMA2 Channel4 enable */
+  // !< DMA2 Channel4 enable
   DMA_Cmd(DMA2_Stream3, ENABLE);
 }
+*/
 
 uint32_t SDSetDPSM(uint32_t dLen, uint32_t dBlkSize, uint32_t trDir, uint32_t trMode, uint32_t timeout, void *buf)
 {
@@ -162,14 +164,17 @@ uint32_t SDSendCMD(int cmdIdx, uint32_t arg, uint32_t resType, uint32_t *resbuf)
 	return ret;
 }
 
-
+/*
 void DMA2_Stream6_IRQHandler(void){
 	USARTPutString("\r\nDMA2_Stream6_IRQ");
 }
+*/
 
+/*
 void SDIO_IRQHandler(void){
 	USARTPutString("\r\nSDIO_IRQ");
 }
+*/
 
 inline uint32_t SDBlockRead(void *buf, uint32_t blockAddress)
 {
@@ -219,7 +224,7 @@ inline uint32_t SDBlockRead(void *buf, uint32_t blockAddress)
 			      SDIO_TransferMode_Block | SDIO_DCTRL_DTEN;
 
 	do{
-		if(STA_RXFIFOHF_BB_FLAG){
+		while(STA_RXFIFOHF_BB_FLAG){
 			pbuf[0] = SDIO->FIFO;
 			pbuf[1] = SDIO->FIFO;
 			pbuf[2] = SDIO->FIFO;
@@ -320,7 +325,7 @@ inline uint32_t SDMultiBlockRead(void *buf, uint32_t blockAddress, uint32_t coun
 			      SDIO_TransferMode_Block | SDIO_DCTRL_DTEN;
 
 	do{
-		if(STA_RXFIFOHF_BB_FLAG){
+		while(STA_RXFIFOHF_BB_FLAG){
 			pbuf[0] = SDIO->FIFO;
 			pbuf[1] = SDIO->FIFO;
 			pbuf[2] = SDIO->FIFO;
@@ -374,8 +379,85 @@ inline uint32_t SDMultiBlockRead(void *buf, uint32_t blockAddress, uint32_t coun
 #endif
 
 	__enable_irq();
-	return (count << 9);
+	return 0;
 }
+
+inline uint32_t SDMultiBlockWrite(void *buf, uint32_t blockAddress, uint32_t count)
+{
+	__disable_irq();
+
+	uint32_t *pbuf = (uint32_t*)buf, ret = count * 512;
+	uint32_t resbuf[4], res, sta;
+	volatile int delay;
+
+	res = SDSendCMD(55, cardInfo.rca, SDIO_Response_Short, resbuf);
+
+	res = SDSendCMD(23, count, SDIO_Response_Short, resbuf);
+
+	res = SDSendCMD(25, cardInfo.csdVer ? blockAddress : (blockAddress << 9), SDIO_Response_Short, resbuf);
+	delay = 1000;
+	while(delay--){};
+
+	int fifo_cnt = 0;
+	SDIO->DLEN = count << 9;
+	SDIO->DTIMER = 0x0fffffff;
+	SDIO->ICR = 0xffffffff;
+	SDIO->DCTRL = SDIO_DataBlockSize_512b | SDIO_TransferDir_ToCard | \
+			      SDIO_TransferMode_Block | SDIO_DCTRL_DTEN;
+	do{
+		while((SDIO->STA & SDIO_FLAG_TXFIFOHE)){
+			if(++fifo_cnt <= (count * 16)){
+				SDIO->FIFO = pbuf[0];
+				SDIO->FIFO = pbuf[1];
+				SDIO->FIFO = pbuf[2];
+				SDIO->FIFO = pbuf[3];
+				SDIO->FIFO = pbuf[4];
+				SDIO->FIFO = pbuf[5];
+				SDIO->FIFO = pbuf[6];
+				SDIO->FIFO = pbuf[7];
+				pbuf += 8;
+			} else {
+				SDIO->FIFO = 0;
+				SDIO->FIFO = 0;
+				SDIO->FIFO = 0;
+				SDIO->FIFO = 0;
+				SDIO->FIFO = 0;
+				SDIO->FIFO = 0;
+				SDIO->FIFO = 0;
+				SDIO->FIFO = 0;
+			}
+		}
+ 	 }while(!((sta = SDIO->STA) & (SDIO_FLAG_TXUNDERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DATAEND | SDIO_FLAG_DTIMEOUT | SDIO_FLAG_STBITERR)));
+
+	if(!(sta & SDIO_FLAG_DATAEND)){
+		if(sta & SDIO_FLAG_TXUNDERR){
+			USARTPutString("\r\nSDIO_FLAG_TXUNDERR");
+		}
+		if(sta & SDIO_FLAG_DCRCFAIL){
+			USARTPutString("\r\nSDIO_FLAG_DCRCFAIL");
+			debug.printf(" SDIO->DCOUNT:%d", SDIO->DCOUNT);
+		}
+		if(sta & SDIO_FLAG_DTIMEOUT){
+			USARTPutString("\r\nSDIO_FLAG_DTIMEOUT");
+		}
+		if(sta & SDIO_FLAG_STBITERR){
+			USARTPutString("\r\nSDIO_FLAG_STBITERR");
+		}
+	}
+	while(SDIO->STA & SDIO_FLAG_TXACT){};
+
+STOP:
+	res = SDSendCMD(12, 0, SDIO_Response_Short, resbuf);
+
+	resbuf[0] = 0;
+	do{
+		res = SDSendCMD(13, cardInfo.rca, SDIO_Response_Short, resbuf);
+	}while(!(resbuf[0] & 0x00000100));
+
+	__enable_irq();
+	return 0;
+}
+
 
 int SD_Switch_BusWidth(int width)
 {
@@ -466,7 +548,7 @@ int SDInit(void){
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
@@ -484,7 +566,7 @@ int SDInit(void){
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_2;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
 

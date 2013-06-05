@@ -11,13 +11,24 @@ TARGET = stm32f4_motion_player
 # IJG libjpeg directory
 JPEG_DIR = ./jpeg-7
 
+# USB Lib 
+USB_LIB_PATH = lib/STM32_USB_Device_Library
+USB_CLASS_PATH = $(USB_LIB_PATH)/Class/msc
+USB_CORE_PATH = $(USB_LIB_PATH)/Core
+USB_OTG_DRIVER_PATH = lib/STM32_USB_OTG_Driver
+
+
 # List C source files here. (C dependencies are automatically generated.)
-SRC = main.c stm32f4xx_it.c fat.c sd.c dojpeg.c mpool.c lcd.c icon.c pcf_font.c mjpeg.c aac.c mp3.c sound.c fft.c fx.c xpt2046.c settings.c xmodem.c usart.c delay.c \
+SRC = main.c stm32f4xx_it.c fat.c sd.c dojpeg.c mpool.c lcd.c icon.c pcf_font.c mjpeg.c aac.c mp3.c sound.c fft.c fx.c xpt2046.c settings.c xmodem.c usart.c usb_bsp.c usbd_desc.c usbd_usr.c usbd_storage_msd.c  delay.c \
 $(JPEG_DIR)/jdapimin.c $(JPEG_DIR)/jerror.c $(JPEG_DIR)/jdatasrc.c $(JPEG_DIR)/wrppm.c $(JPEG_DIR)/jdapistd.c $(JPEG_DIR)/jmemmgr.c \
 $(JPEG_DIR)/jdmarker.c $(JPEG_DIR)/jdinput.c $(JPEG_DIR)/jcomapi.c $(JPEG_DIR)/jdmaster.c $(JPEG_DIR)/jmemnobs.c $(JPEG_DIR)/jutils.c \
 $(JPEG_DIR)/jquant1.c $(JPEG_DIR)/jquant2.c $(JPEG_DIR)/jddctmgr.c $(JPEG_DIR)/jdarith.c $(JPEG_DIR)/jdcoefct.c $(JPEG_DIR)/jdmainct.c \
 $(JPEG_DIR)/jdcolor.c $(JPEG_DIR)/jdsample.c $(JPEG_DIR)/jdpostct.c $(JPEG_DIR)/jdhuff.c $(JPEG_DIR)/jdmerge.c $(JPEG_DIR)/jidctint.c \
-$(JPEG_DIR)/jidctfst.c $(JPEG_DIR)/jaricom.c
+$(JPEG_DIR)/jidctfst.c $(JPEG_DIR)/jaricom.c \
+$(USB_CORE_PATH)/src/usbd_core.c $(USB_CORE_PATH)/src/usbd_req.c $(USB_CORE_PATH)/src/usbd_ioreq.c \
+$(USB_CLASS_PATH)/src/usbd_msc_bot.c $(USB_CLASS_PATH)/src/usbd_msc_core.c $(USB_CLASS_PATH)/src/usbd_msc_data.c $(USB_CLASS_PATH)/src/usbd_msc_scsi.c \
+$(USB_OTG_DRIVER_PATH)/src/usb_dcd.c $(USB_OTG_DRIVER_PATH)/src/usb_core.c $(USB_OTG_DRIVER_PATH)/src/usb_dcd_int.c
+
 
 
 ASRC = images.s
@@ -31,7 +42,7 @@ DEBUG = #stabs
 
 # List any extra directories to look for include files here.
 #     Each directory must be seperated by a space.
-EXTRAINCDIRS = lib/CMSIS/Include lib/STM32F4xx_StdPeriph_Driver/inc lib/CMSIS/ST/STM32F4xx/Include /usr/local/arm/arm-none-eabi/include ./jpeg-7 ./aac ./mp3
+EXTRAINCDIRS = lib/CMSIS/Include lib/STM32F4xx_StdPeriph_Driver/inc lib/CMSIS/ST/STM32F4xx/Include /usr/local/arm/arm-none-eabi/include $(USB_CLASS_PATH)/inc $(USB_CORE_PATH)/inc $(USB_OTG_DRIVER_PATH)/inc ./jpeg-7 ./aac ./mp3
 
 
 # Compiler flag to set the C Standard level.
@@ -42,7 +53,7 @@ EXTRAINCDIRS = lib/CMSIS/Include lib/STM32F4xx_StdPeriph_Driver/inc lib/CMSIS/ST
 CSTANDARD =
 
 # Place -D or -U options here
-CDEFS = -DBUILD=0x`date '+%Y%m%d'` -DARM -DARM_MATH_CM4 -D__FPU_PRESENT
+CDEFS = -DBUILD=0x`date '+%Y%m%d'` -DARM -DARM_MATH_CM4 -D__FPU_PRESENT -DSTM32F4XX -DUSE_USB_OTG_FS -DUSE_STM324xG_EVAL
 
 # Place -I options here
 CINCS =

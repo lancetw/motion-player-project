@@ -171,6 +171,11 @@ extern const uint16_t parent_arrow_22x22_alpha[],_sizeof_parent_arrow_22x22_alph
 extern const uint16_t select_22x22[],_sizeof_select_22x22[];
 extern const uint16_t select_22x22_alpha[],_sizeof_select_22x22_alpha[];
 
+extern const uint16_t usb_22x22[],_sizeof_usb_22x22[];
+extern const uint16_t usb_22x22_alpha[],_sizeof_usb_22x22_alpha[];
+
+extern const uint16_t connect_22x22[],_sizeof_connect_22x22[];
+extern const uint16_t connect_22x22_alpha[],_sizeof_connect_22x22_alpha[];
 
 
 extern const uint16_t navigation_playing_patch_32x32[];

@@ -19,6 +19,12 @@
 #include "lcd.h"
 #include "sd.h"
 
+#include "usbd_msc_core.h"
+#include "usbd_usr.h"
+#include "usbd_desc.h"
+#include "usb_conf.h"
+
+
 char settings_mode;
 unsigned char settings_root_list_fileCnt;
 
@@ -47,6 +53,8 @@ const icon_ptr_typedef cpu_icon[] = {cpu_22x22, cpu_22x22_alpha};
 const icon_ptr_typedef display_icon[] = {display_22x22, display_22x22_alpha};
 const icon_ptr_typedef debug_icon[] = {debug_22x22, debug_22x22_alpha};
 const icon_ptr_typedef info_icon[] = {info_22x22, info_22x22_alpha};
+const icon_ptr_typedef usb_icon[] = {usb_22x22, usb_22x22_alpha};
+const icon_ptr_typedef connect_icon[] = {connect_22x22, connect_22x22_alpha};
 
 
 const settings_list_typedef settings_root_list[] = {
@@ -58,7 +66,18 @@ const settings_list_typedef settings_root_list[] = {
 		{"Debug", debug_icon, 2, NEXT_LIST(settings_debug_list)},
 		{"Filer", folder_icon, 2, NEXT_LIST(settings_filer_list)},
 		{"Music", music_icon, 4, NEXT_LIST(settings_music_list)},
+		{"USB Mass Storage", usb_icon, 2, NEXT_LIST(settings_usb_msc_list)},
 };
+
+const settings_list_typedef settings_usb_msc_list[] = {
+		{"..", NULL, 0, NEXT_LIST(settings_root_list)},
+		{"Connect to Host", connect_icon, 1, NEXT_LIST(settings_usb_msc_select_list), SETTINS_USB_CONNECT_HOST},
+};
+
+const settings_list_typedef settings_usb_msc_select_list[] = {
+		{"..", NULL, 0, NEXT_LIST(settings_usb_msc_list)},
+};
+
 
 const settings_list_typedef settings_about_motionplayer_list[] = {
 		{"..", NULL, 0, NEXT_LIST(settings_root_list)},
@@ -666,6 +685,16 @@ void *SETTING_CARD_BUSWIDTH(void *arg)
 	SETTINGS_Save();
 
 	SD_Switch_BusWidth(settings_group.card_conf.busWidth);
+
+	return NULL;
+}
+
+
+void *SETTINS_USB_CONNECT_HOST(void *arg)
+{
+	extern volatile int8_t usb_msc_enable;
+
+	usb_msc_enable = 1;
 
 	return NULL;
 }

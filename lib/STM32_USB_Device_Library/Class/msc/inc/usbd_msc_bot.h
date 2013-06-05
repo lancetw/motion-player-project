@@ -105,7 +105,7 @@ MSC_BOT_CSW_TypeDef;
   * @{
   */
 
-extern uint8_t              MSC_BOT_Data[];
+extern uint8_t              *MSC_BOT_Data;
 extern uint16_t             MSC_BOT_DataLen;
 extern uint8_t              MSC_BOT_State;
 extern uint8_t              MSC_BOT_BurstMode;

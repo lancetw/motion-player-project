@@ -13,7 +13,6 @@ void TIM2_IRQHandler(void){
 	timeout++;
 }
 
-
 int16_t usart_polling_timeout(uint32_t t)		/* タイムアウト付きUSARTポーリング */
 {
 	while(!(USART3->SR & USART_FLAG_RXNE)){

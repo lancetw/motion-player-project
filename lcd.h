@@ -148,7 +148,7 @@ volatile uint16_t clx, cly;
 uint16_t cursorRAM[LCD_WIDTH * 13];
 uint16_t progress_circular_bar_16x16x12_buff[16*16*12];
 //extern void put_pixels_row_by_DMA(void* DstBuff, uint32_t dLen);
-extern void MergeCircularProgressBar(void);
+extern void MergeCircularProgressBar(int8_t menubar);
 extern void LCDInit(void);
 //inline void LCDPutCmd(uint16_t cmd);
 //inline void LCDPutData(uint16_t data);

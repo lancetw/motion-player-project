@@ -24,6 +24,8 @@
 #include "usbd_msc_scsi.h"
 #include "usbd_ioreq.h"
 #include "usbd_msc_mem.h"
+
+#include "mpool.h"
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
@@ -71,7 +73,8 @@ uint8_t              MSC_BOT_Status;
     #pragma data_alignment=4   
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
-__ALIGN_BEGIN uint8_t              MSC_BOT_Data[MSC_MEDIA_PACKET] __ALIGN_END ;
+//__ALIGN_BEGIN uint8_t              MSC_BOT_Data[MSC_MEDIA_PACKET] __ALIGN_END ;
+__ALIGN_BEGIN uint8_t              *MSC_BOT_Data = (uint8_t*)mempool __ALIGN_END ;
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */

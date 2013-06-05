@@ -66,11 +66,15 @@
   * @{
   */ 
 
+#include "usart.h"
+static int8_t mediumRemoved = 0;
+//#define DEBUG
+
 SCSI_Sense_TypeDef     SCSI_Sense [SENSE_LIST_DEEPTH];
 uint8_t   SCSI_Sense_Head;
 uint8_t   SCSI_Sense_Tail;
 
-uint32_t  SCSI_blk_size;
+uint16_t  SCSI_blk_size;
 uint32_t  SCSI_blk_nbr;
 
 uint32_t  SCSI_blk_addr;
@@ -181,6 +185,9 @@ int8_t SCSI_ProcessCmd(USB_OTG_CORE_HANDLE  *pdev,
 */
 static int8_t SCSI_TestUnitReady(uint8_t lun, uint8_t *params)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_TestUnitReady");
+#endif
   
   /* case 9 : Hi > D0 */
   if (MSC_BOT_cbw.dDataLength != 0)
@@ -191,6 +198,12 @@ static int8_t SCSI_TestUnitReady(uint8_t lun, uint8_t *params)
     return -1;
   }  
   
+  if(mediumRemoved){
+	    SCSI_SenseCode(lun,
+	                   NOT_READY,
+	                   MEDIUM_NOT_PRESENT);
+	    return -1;
+  }
   if(USBD_STORAGE_fops->IsReady(lun) !=0 )
   {
     SCSI_SenseCode(lun,
@@ -211,6 +224,10 @@ static int8_t SCSI_TestUnitReady(uint8_t lun, uint8_t *params)
 */
 static int8_t  SCSI_Inquiry(uint8_t lun, uint8_t *params)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_Inquiry");
+#endif
+
   uint8_t* pPage;
   uint16_t len;
   
@@ -249,7 +266,10 @@ static int8_t  SCSI_Inquiry(uint8_t lun, uint8_t *params)
 */
 static int8_t SCSI_ReadCapacity10(uint8_t lun, uint8_t *params)
 {
-  
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_ReadCapacity10");
+#endif
+
   if(USBD_STORAGE_fops->GetCapacity(lun, &SCSI_blk_nbr, &SCSI_blk_size) != 0)
   {
     SCSI_SenseCode(lun,
@@ -283,8 +303,11 @@ static int8_t SCSI_ReadCapacity10(uint8_t lun, uint8_t *params)
 */
 static int8_t SCSI_ReadFormatCapacity(uint8_t lun, uint8_t *params)
 {
-  
-  uint32_t blk_size;
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_ReadFormatCapacity");
+#endif
+
+  uint16_t blk_size;
   uint32_t blk_nbr;
   uint16_t i;
   
@@ -326,7 +349,10 @@ static int8_t SCSI_ReadFormatCapacity(uint8_t lun, uint8_t *params)
 */
 static int8_t SCSI_ModeSense6 (uint8_t lun, uint8_t *params)
 {
-  
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_ModeSense6");
+#endif
+
   uint16_t len = 8 ;
   MSC_BOT_DataLen = len;
   
@@ -347,6 +373,10 @@ static int8_t SCSI_ModeSense6 (uint8_t lun, uint8_t *params)
 */
 static int8_t SCSI_ModeSense10 (uint8_t lun, uint8_t *params)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_ModeSense10");
+#endif
+
  uint16_t len = 8;
 
  MSC_BOT_DataLen = len;
@@ -369,6 +399,10 @@ static int8_t SCSI_ModeSense10 (uint8_t lun, uint8_t *params)
 
 static int8_t SCSI_RequestSense (uint8_t lun, uint8_t *params)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_RequestSense");
+#endif
+
   uint8_t i;
   
   for(i=0 ; i < REQUEST_SENSE_DATA_LEN ; i++) 
@@ -419,6 +453,7 @@ void SCSI_SenseCode(uint8_t lun, uint8_t sKey, uint8_t ASC)
     SCSI_Sense_Tail = 0;
   }
 }
+
 /**
 * @brief  SCSI_StartStopUnit
 *         Process Start Stop Unit command
@@ -428,6 +463,43 @@ void SCSI_SenseCode(uint8_t lun, uint8_t sKey, uint8_t ASC)
 */
 static int8_t SCSI_StartStopUnit(uint8_t lun, uint8_t *params)
 {
+	if(params[0] == 0x1b){
+#ifdef DEBUG
+		debug.printf("\r\nSCSI_StartStopUnit");
+#endif
+		switch(params[4] & 0x3){
+		case 0:
+#ifdef DEBUG
+			debug.printf("::STOP");
+#endif
+			break;
+		case 1:
+#ifdef DEBUG
+			debug.printf("::START");
+#endif
+			break;
+		case 2:
+#ifdef DEBUG
+			debug.printf("::EJECT");
+#endif
+			mediumRemoved = 1;
+			IWDG_Enable(); // software reset
+
+			break;
+		case 3:
+#ifdef DEBUG
+			debug.printf("::INSERT");
+#endif
+			break;
+		default:
+			break;
+		}
+	} else if(params[0] == 0x1e){
+#ifdef DEBUG
+		debug.printf("\r\nSCSI_AllowMediumRemoval");
+#endif
+	}
+
   MSC_BOT_DataLen = 0;
   return 0;
 }
@@ -441,6 +513,9 @@ static int8_t SCSI_StartStopUnit(uint8_t lun, uint8_t *params)
 */
 static int8_t SCSI_Read10(uint8_t lun , uint8_t *params)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_Read10");
+#endif
   if(MSC_BOT_State == BOT_IDLE)  /* Idle */
   {
     
@@ -505,6 +580,10 @@ static int8_t SCSI_Read10(uint8_t lun , uint8_t *params)
 
 static int8_t SCSI_Write10 (uint8_t lun , uint8_t *params)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_Write10");
+#endif
+
   if (MSC_BOT_State == BOT_IDLE) /* Idle */
   {
     
@@ -586,6 +665,10 @@ static int8_t SCSI_Write10 (uint8_t lun , uint8_t *params)
 */
 
 static int8_t SCSI_Verify10(uint8_t lun , uint8_t *params){
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_Verify10");
+#endif
+
   if ((params[1]& 0x02) == 0x02) 
   {
     SCSI_SenseCode (lun, ILLEGAL_REQUEST, INVALID_FIELED_IN_COMMAND);
@@ -610,7 +693,10 @@ static int8_t SCSI_Verify10(uint8_t lun , uint8_t *params){
 */
 static int8_t SCSI_CheckAddressRange (uint8_t lun , uint32_t blk_offset , uint16_t blk_nbr)
 {
-  
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_CheckAddressRange");
+#endif
+
   if ((blk_offset + blk_nbr) > SCSI_blk_nbr )
   {
     SCSI_SenseCode(lun, ILLEGAL_REQUEST, ADDRESS_OUT_OF_RANGE);
@@ -627,6 +713,10 @@ static int8_t SCSI_CheckAddressRange (uint8_t lun , uint32_t blk_offset , uint16
 */
 static int8_t SCSI_ProcessRead (uint8_t lun)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_ProcessRead");
+#endif
+
   uint32_t len;
   
   len = MIN(SCSI_blk_len , MSC_MEDIA_PACKET); 
@@ -670,6 +760,10 @@ static int8_t SCSI_ProcessRead (uint8_t lun)
 
 static int8_t SCSI_ProcessWrite (uint8_t lun)
 {
+#ifdef DEBUG
+	debug.printf("\r\nSCSI_ProcessWrite");
+#endif
+
   uint32_t len;
   
   len = MIN(SCSI_blk_len , MSC_MEDIA_PACKET); 

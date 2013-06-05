@@ -2,9 +2,9 @@
  *		STM32F4-Discovery Motion Player Project
  *		by Tonsuke
  *
- *		v1.6
+ *		v1.7
  *
- *		2013/05/27
+ *		2013/06/05
  *
  *		http://motionplayer.wiki.fc2.com
  */
@@ -25,10 +25,36 @@
 #include "icon.h"
 #include "settings.h"
 
+#include "usbd_msc_core.h"
+#include "usbd_usr.h"
+#include "usbd_desc.h"
+#include "usb_conf.h"
+
+
+USB_OTG_CORE_HANDLE USB_OTG_dev;
+volatile int8_t usb_msc_enable = 0, usb_msc_card_accessing = 0, usb_msc_progressbar_enable = 0;
+
 void TIM8_UP_TIM13_IRQHandler(void) // Back Light & Sleep control timer
 {
 	if(TIM_GetITStatus(TIM8, TIM_IT_Update)){
 		TIM_ClearITPendingBit(TIM8, TIM_IT_Update);
+		if(usb_msc_enable){
+			if(usb_msc_card_accessing){
+				if(usb_msc_progressbar_enable){
+					TIM_Cmd(TIM1, ENABLE); // Start displaying progress bar
+				}
+	    		usb_msc_progressbar_enable = 1;
+			} else {
+				TIM_Cmd(TIM1, DISABLE); // Stop displaying progress bar
+				int i;
+				for(i = 0;i < 16 * 16;i++){ // Clear progress bar drawings
+					LCDPutData(colorc[BLACK]);
+				}
+				usb_msc_progressbar_enable = 0;
+			}
+			usb_msc_card_accessing = 0;
+			return;
+		}
 
 		if(settings_group.disp_conf.time2sleep == 0){ // Always On
 			return;
@@ -46,6 +72,7 @@ void TIM8_UP_TIM13_IRQHandler(void) // Back Light & Sleep control timer
 		}
 	}
 }
+
 
 int main(void)
 {
@@ -148,7 +175,37 @@ int main(void)
 	LCDBackLightTimerInit();
 
     while(1){
-    	if(time.flags.stop_mode){
+    	if(usb_msc_enable){ // Start Mass Storage Mode
+    		settings_group.disp_conf.time2sleep = 0;
+    		TOUCH_PINIRQ_DISABLE;
+    		touch.func = touch_empty_func;
+
+    		LCDClear(LCD_WIDTH, LCD_HEIGHT, BLACK);
+    		LCDPutIcon(75, 95, 22, 22, usb_22x22, usb_22x22_alpha);
+    		LCDGotoXY(100, 100);
+    		LCDPutString("USB Connect to HOST", WHITE);
+
+    		// show circular progress bar animation until file list complete
+    		MergeCircularProgressBar(0);
+    		LCDSetWindowArea(147, 150, 16, 16);
+    		LCDSetGramAddr(147, 150);
+    		LCDPutCmd(0x0022);
+    		DMA_ProgressBar_Conf();
+
+    		SystemInit2(168);
+    		SystemCoreClockUpdate();
+    		USARTInit();
+
+    	    USBD_Init(&USB_OTG_dev,
+    	              USB_OTG_FS_CORE_ID,
+    	              &USR_desc,
+    	              &USBD_MSC_cb,
+    	              &USR_cb);
+
+    	    while(1){};
+    	}
+
+    	if(time.flags.stop_mode){ // Enter Stop Mode
     		LCDBackLightDisable();
     		PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
     		SystemInit();
@@ -227,7 +284,7 @@ int main(void)
 					cursor.pageIdx = LCDStatusStruct.idEntry / PAGE_NUM_ITEMS;
 				}
 			}while((ret != RET_PLAY_STOP) || LCDStatusStruct.waitExitKey);
-			MergeCircularProgressBar();
+			MergeCircularProgressBar(1);
 			LCDPrintFileList();
 			touch.click = 0;
 			break;
@@ -270,7 +327,7 @@ int main(void)
 						cursor.pageIdx = LCDStatusStruct.idEntry / PAGE_NUM_ITEMS;
 					}
 				}while(LCDStatusStruct.waitExitKey);
-				MergeCircularProgressBar();
+				MergeCircularProgressBar(1);
 				LCDPrintFileList();
     			touch.click = 0;
 				break;

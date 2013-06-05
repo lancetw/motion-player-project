@@ -44,15 +44,15 @@ void DMA_ProgressBar_Conf(){
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	TIM_OCInitTypeDef TIM_OCInitStructure;
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 
-	TIM_DeInit(TIM8);
+	TIM_DeInit(TIM1);
 	TIM_TimeBaseInitStructure.TIM_Period = 5 - 1; // 50ms
 	TIM_TimeBaseInitStructure.TIM_Prescaler = 10000 - 1; // 10ms
 	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInitStructure.TIM_RepetitionCounter = (SystemCoreClock / 1000000UL) - 1; // 1us
 	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-	TIM_TimeBaseInit(TIM8, &TIM_TimeBaseInitStructure);
+	TIM_TimeBaseInit(TIM1, &TIM_TimeBaseInitStructure);
 
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
@@ -62,23 +62,24 @@ void DMA_ProgressBar_Conf(){
 	TIM_OCInitStructure.TIM_OutputNState = TIM_OutputNState_Disable;
 	TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCNPolarity_High;
 	TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
-	TIM_OC1Init(TIM8, &TIM_OCInitStructure);
-	TIM_OC1PreloadConfig(TIM8, TIM_OCPreload_Disable);
+	TIM_OC3Init(TIM1, &TIM_OCInitStructure);
+	TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Disable);
 
-	TIM_SetCompare3(TIM8, 1);
-	TIM_Cmd(TIM8, ENABLE);
-	TIM_DMACmd(TIM8, TIM_DMA_CC1, ENABLE);
+	TIM_SetCompare3(TIM1, 1);
+	TIM_Cmd(TIM1, ENABLE);
+	TIM_DMACmd(TIM1, TIM_DMA_CC3, ENABLE);
+
 	DMA_InitTypeDef DMA_InitStructure;
 
-	DMA_ClearFlag(DMA2_Stream2, DMA_FLAG_FEIF2 | DMA_FLAG_DMEIF2 | DMA_FLAG_TEIF2 | DMA_FLAG_HTIF2 | DMA_FLAG_TCIF2);
+	DMA_ClearFlag(DMA2_Stream6, DMA_FLAG_FEIF6 | DMA_FLAG_DMEIF6 | DMA_FLAG_TEIF6 | DMA_FLAG_HTIF6 | DMA_FLAG_TCIF6);
 
-	/*!< DMA2 Channel7 disable */
-	DMA_Cmd(DMA2_Stream2, DISABLE);
+	/*!< DMA2 Channel6 disable */
+	DMA_Cmd(DMA2_Stream6, DISABLE);
 
-	DMA_DeInit(DMA2_Stream2);
+	DMA_DeInit(DMA2_Stream6);
 
-	/*!< DMA2 Channel7 Config */
-	DMA_InitStructure.DMA_Channel = DMA_Channel_7;
+	/*!< DMA2 Channel6 Config */
+	DMA_InitStructure.DMA_Channel = DMA_Channel_6;
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&LCD->RAM;
 	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&progress_circular_bar_16x16x12_buff;
 	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
@@ -93,11 +94,11 @@ void DMA_ProgressBar_Conf(){
 	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
 	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_INC4;
 	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_INC4;
-	DMA_Init(DMA2_Stream2, &DMA_InitStructure);
+	DMA_Init(DMA2_Stream6, &DMA_InitStructure);
 	//DMA_ITConfig(DMA2_Stream2, DMA_IT_TC, ENABLE);
 
 	/*!< DMA2 Channel7 enable */
-	DMA_Cmd(DMA2_Stream2, ENABLE);
+	DMA_Cmd(DMA2_Stream6, ENABLE);
 }
 
 void LCDBackLightInit()
@@ -318,7 +319,7 @@ void LCDPeripheralInit(void)
 	time.flags.enable = 1;
 }
 
-void MergeCircularProgressBar(){
+void MergeCircularProgressBar(int8_t menubar){
 	int i, j, k, l;
 	float alpha_ratio;
 	uint16_t progress_circular_bar_temp[16 * 16];
@@ -329,7 +330,7 @@ void MergeCircularProgressBar(){
 	k = 0;
 	for(j = PROGRESS_CIRCULAR_POS_Y;j < (PROGRESS_CIRCULAR_POS_Y + PROGRESS_CIRCULAR_HEIGHT);j++){
 		for(i = PROGRESS_CIRCULAR_POS_X;i < (PROGRESS_CIRCULAR_POS_X + PROGRESS_CIRCULAR_WIDTH);i++){
-			progress_circular_bar_temp[k++] = menubar_320x22[i + j * 320];
+			progress_circular_bar_temp[k++] = menubar ? menubar_320x22[i + j * 320] : colorc[BLACK];
 		}
 	}
 
@@ -463,7 +464,7 @@ void LCDInit(void)
 	LCD_FUNC.putChar = LCDPutWideCharDefault;
 	LCD_FUNC.putWideChar = LCDPutWideCharDefault;
 
-	MergeCircularProgressBar();
+	MergeCircularProgressBar(1);
 	jpeg_read.buf_type = 0;
 
 	LCDPutCmd(0x0000);
@@ -928,9 +929,8 @@ void LCDPrintFileList()
 	uint8_t pLFNname[80];
 	char fileNameStr[13], fileSizeStr[13], fileTypeStr[4];
 
-
-	TIM_Cmd(TIM8, DISABLE);
-	DMA_Cmd(DMA2_Stream2, DISABLE);
+	TIM_Cmd(TIM1, DISABLE); // Stop displaying progress bar
+	DMA_Cmd(DMA2_Stream6, DISABLE);
 
 	LCDSetWindowArea(0, 0, LCD_WIDTH, LCD_HEIGHT);
 
@@ -1065,8 +1065,8 @@ void LCDPrintSettingsList(char type, int select_id, settings_item_typedef *item)
 	volatile uint16_t idEntry = cursor.pageIdx * PAGE_NUM_ITEMS;
 	uint16_t step;
 
-	TIM_Cmd(TIM8, DISABLE);
-	DMA_Cmd(DMA2_Stream2, DISABLE);
+	TIM_Cmd(TIM1, DISABLE);
+	DMA_Cmd(DMA2_Stream6, DISABLE);
 
 	LCDSetWindowArea(0, 0, LCD_WIDTH, LCD_HEIGHT);
 
@@ -1408,6 +1408,7 @@ void LCDCursorEnter()
 		DMA_ProgressBar_Conf();
 
 		changeDir(idEntry); // idEntryのディレクトリに移動する
+		LCDPrintFileList(); // ファイルリスト表示
 	}
 }
 

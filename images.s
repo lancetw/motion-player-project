@@ -394,6 +394,34 @@ select_22x22_alpha:
 .global _sizeof_select_22x22_alpha
 .set _sizeof_select_22x22_alpha, . -select_22x22_alpha
 
+.balign 2
+.global usb_22x22
+usb_22x22:
+.incbin "usb_22x22.bin"
+.global _sizeof_usb_22x22
+.set _sizeof_usb_22x22, . -usb_22x22
+
+.balign 2
+.global usb_22x22_alpha
+usb_22x22_alpha:
+.incbin "usb_22x22_alpha.bin"
+.global _sizeof_usb_22x22_alpha
+.set _sizeof_usb_22x22_alpha, . -usb_22x22_alpha
+
+
+.balign 2
+.global connect_22x22
+connect_22x22:
+.incbin "connect_22x22.bin"
+.global _sizeof_connect_22x22
+.set _sizeof_connect_22x22, . -connect_22x22
+
+.balign 2
+.global connect_22x22_alpha
+connect_22x22_alpha:
+.incbin "connect_22x22_alpha.bin"
+.global _sizeof_connect_22x22_alpha
+.set _sizeof_connect_22x22_alpha, . -connect_22x22_alpha
 
 
 .section ".text"

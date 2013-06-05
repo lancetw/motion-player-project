@@ -897,7 +897,5 @@ void changeDir(int id)
 
 		idxDirNameStack += sizeof(fat.currentDirName);
 	}
-
-	LCDPrintFileList(); // ファイルリスト表示
 }
 

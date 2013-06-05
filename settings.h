@@ -18,7 +18,7 @@
 #include "sd.h"
 
 #define VERSION_MAJOR 1
-#define VERSION_MINOR 6
+#define VERSION_MINOR 7
 
 #define SETTING_TYPE_DIR   0
 #define SETTING_TYPE_ITEM  1
@@ -115,6 +115,7 @@ extern const settings_list_typedef settings_card_list[];
 extern const settings_list_typedef settings_card_buswidth_list[];
 extern const settings_list_typedef settings_back_to_cardlist[];
 
+extern const settings_list_typedef settings_usb_msc_list[], settings_usb_msc_select_list[];
 extern const settings_list_typedef settings_about_motionplayer_list[];
 
 extern const settings_list_typedef settings_cpu_list[];
@@ -144,6 +145,7 @@ extern void SETTINGS_Save(void);
 static void *SETTING_DISPLAY_CARDINFO(void *arg);
 static void *SETTING_CARD_SPEEDTEST(void *arg);
 static void *SETTING_CARD_BUSWIDTH(void *arg);
+static void *SETTINS_USB_CONNECT_HOST(void *arg);
 static void *SETTING_ABOUT_MOTIONPLAYER(void *arg);
 static void *SETTINGS_CPU_FREQ(void *arg);
 static void *SETTINGS_BAUDRATE(void *arg);
