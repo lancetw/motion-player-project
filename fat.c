@@ -142,6 +142,8 @@ void setSFNname(char *name, int id){
 	strtok(name, " ");
 }
 
+// set extension name
+// return 1: archive 0: directry
 int setExtensionName(char *name, int id){
 	int ret = 0;
 	uint16_t entryPointOffset;

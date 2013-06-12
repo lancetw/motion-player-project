@@ -92,6 +92,8 @@ extern const uint16_t seek_circle_16x16_alpha[],_sizeof_seek_circle_16x16_alpha[
 
 extern const uint16_t abort_icon_40x40[],_sizeof_abort_icon_40x40[];
 
+extern const uint16_t play_icon_40x40[],_sizeof_play_icon_40x40[];
+
 extern const uint16_t play_icon_40x40_alpha[],_sizeof_play_icon_40x40_alpha[];
 
 

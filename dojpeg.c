@@ -5,7 +5,9 @@
 #include "fat.h"
 #include "usart.h"
 #include "xpt2046.h"
+#include "settings.h"
 
+#include "sound.h"
 
 #include "jerror.h"
 #include "cdjpeg.h"		/* Common decls for cjpeg/djpeg applications */
@@ -43,11 +45,17 @@ int dojpeg(int id, uint8_t djpeg_arrows, uint8_t arrow_clicked)
 	struct jpeg_error_mgr jerr;
 	djpeg_dest_ptr dest_mgr = NULL;
 	int touch_flag = 0, ret, copy_image_to;
+	extern settings_group_typedef settings_group;
+	uint8_t time2sleep_cp = 0;
+	time2sleep_cp = settings_group.disp_conf.time2sleep;
 
+	if(time2sleep_cp){ // prevent to sleep during photo frame process
+		settings_group.disp_conf.time2sleep = 0;
+	}
 
 	pic_arrow_buf_typedef pic_left_arrow, pic_right_arrow;
 	pic_pref_buf_typedef pic_pref;
-	pic_play_icon_buf pic_abort_icon;
+	pic_play_icon_buf pic_abort_icon, pic_play_icon;
 	copy_image_icon_buf copy_image_icon, copy_image_filer, copy_image_music;
 
 	MY_FILE *input_file = '\0';
@@ -208,11 +216,11 @@ END_PROCESS:
 	pic_abort_icon.height = 40;
 	LCDStoreBgImgToBuff(pic_abort_icon.x, pic_abort_icon.y, pic_abort_icon.width, pic_abort_icon.height, pic_abort_icon.p);
 
-//	pic_play_icon.x = 65;
-//	pic_play_icon.y = 20;
-//	pic_play_icon.width = 40;
-//	pic_play_icon.height = 40;
-//	LCDStoreBgImgToBuff(pic_play_icon.x, pic_play_icon.y, pic_play_icon.width, pic_play_icon.height, pic_play_icon.p);
+	pic_play_icon.x = 65;
+	pic_play_icon.y = 20;
+	pic_play_icon.width = 40;
+	pic_play_icon.height = 40;
+	LCDStoreBgImgToBuff(pic_play_icon.x, pic_play_icon.y, pic_play_icon.width, pic_play_icon.height, pic_play_icon.p);
 
 	copy_image_icon.x = 109;
 	copy_image_icon.y = 20;
@@ -256,6 +264,38 @@ END_PROCESS:
 	uint16_t bgImageBuf[3 * 1024], confBuf[2 * 1024], *p16;
 	int flash_status;
 
+	if((djpeg_arrows & DJPEG_PLAY)){
+		if(ret == -1){
+			ret = DJPEG_PLAY;
+			LCDStatusStruct.waitExitKey = 1;
+			goto SKIP_PLAY_DELAY;
+		}
+		ret = DJPEG_PLAY;
+
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+		TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
+
+		TIM_DeInit(TIM1);
+		TIM_TimeBaseInitStructure.TIM_Period = 9999;
+		TIM_TimeBaseInitStructure.TIM_Prescaler = (100 * settings_group.filer_conf.photo_frame_td - 1);
+		TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+		TIM_TimeBaseInitStructure.TIM_RepetitionCounter = (SystemCoreClock / 1000000UL) - 1;
+		TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+		TIM_TimeBaseInit(TIM1, &TIM_TimeBaseInitStructure);
+		TIM_SetCounter(TIM1, 0);
+		TIM_Cmd(TIM1, ENABLE);
+		TIM_ClearFlag(TIM1, TIM_FLAG_Update);
+
+		while(!TIM_GetFlagStatus(TIM1, TIM_FLAG_Update)){
+			if(touch.click){
+				extern volatile int8_t photo_frame_flag;
+				photo_frame_flag = 0;
+				ret = 0;
+				break;
+			}
+		}
+	}
+SKIP_PLAY_DELAY:
 
 	while(!ret && LCDStatusStruct.waitExitKey){
 		while(!touch.click){
@@ -266,8 +306,18 @@ END_PROCESS:
 		}
 		ARROW_CLIKED:
 		if(touch_flag ^= 1){
+			if(time2sleep_cp){
+				settings_group.disp_conf.time2sleep = time2sleep_cp;
+			}
+
+			/* Experimental photo frame music
+		    DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
+		    DMA_Cmd(DMA1_Stream1, DISABLE);
+		    AUDIO_OUT_SHUTDOWN;
+		    */
+
 			LCDPutIcon(pic_abort_icon.x, pic_abort_icon.y, pic_abort_icon.width, pic_abort_icon.height, abort_icon_40x40, play_icon_40x40_alpha); // display abort icon
-//			LCDPutIcon(pic_play_icon.x, pic_play_icon.y, pic_play_icon.width, pic_play_icon.height, play_icon_40x40, play_icon_40x40_alpha); // display play icon
+			LCDPutIcon(pic_play_icon.x, pic_play_icon.y, pic_play_icon.width, pic_play_icon.height, play_icon_40x40, play_icon_40x40_alpha); // display play icon
 			LCDPutIcon(pic_pref.x, pic_pref.y, pic_pref.width, pic_pref.height, pic_pref_30x30, pic_pref_30x30_alpha); // display play icon
 			if(djpeg_arrows & DJPEG_ARROW_LEFT){
 				LCDPutIcon(pic_left_arrow.x, pic_left_arrow.y, pic_left_arrow.width, pic_left_arrow.height, pic_left_arrow_30x30, pic_left_arrow_30x30_alpha);
@@ -277,7 +327,7 @@ END_PROCESS:
 			}
 		} else {
 			LCDPutBuffToBgImg(pic_abort_icon.x, pic_abort_icon.y, pic_abort_icon.width, pic_abort_icon.height, pic_abort_icon.p); // disapear abort icon
-//			LCDPutBuffToBgImg(pic_play_icon.x, pic_play_icon.y, pic_play_icon.width, pic_play_icon.height, pic_play_icon.p); // disapear play icon
+			LCDPutBuffToBgImg(pic_play_icon.x, pic_play_icon.y, pic_play_icon.width, pic_play_icon.height, pic_play_icon.p); // disapear play icon
 			LCDPutBuffToBgImg(pic_pref.x, pic_pref.y, pic_pref.width, pic_pref.height, pic_pref.p); // disapper pic pref icon
 
 			if(djpeg_arrows & DJPEG_ARROW_LEFT){
@@ -296,6 +346,18 @@ END_PROCESS:
 					ret = DJPEG_ARROW_RIGHT;
 				}
 			}
+			if((touch.posX > (pic_play_icon.x - 10) && touch.posX < (pic_play_icon.x + pic_play_icon.width + 10)) && \
+					(touch.posY > (pic_play_icon.y - 10) && touch.posY < (pic_play_icon.y + pic_play_icon.height + 10))) // check if play icon clicked
+			{
+				/* Experimental photo frame music
+				if(dac_intr.sound_reads > 0){
+				    DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, ENABLE);
+				    DMA_Cmd(DMA1_Stream1, ENABLE);
+				}
+				*/
+				ret = DJPEG_PLAY;
+			}
+
 			if((touch.posX > (pic_pref.x - 10) && touch.posX < (pic_pref.x + pic_pref.width + 10)) && \
 					(touch.posY > (pic_pref.y - 10) && touch.posY < (pic_pref.y + pic_pref.height + 10))) // check if pref icon clicked
 			{
@@ -451,6 +513,10 @@ END_PROCESS:
 		touch.click = 0;
 	}
 	touch.func = LCDTouchPoint;
+
+	if(time2sleep_cp){
+		settings_group.disp_conf.time2sleep = time2sleep_cp;
+	}
 
 	return ret;			/* suppress no-return-value warnings */
 }

@@ -36,6 +36,14 @@ seek_circle_16x16_alpha:
 .set _sizeof_seek_circle_16x16_alpha, . - seek_circle_16x16_alpha
 
 .balign 2
+.global play_icon_40x40
+play_icon_40x40:
+.incbin "play_icon_40x40.bin"
+.global _sizeof_play_icon_40x40
+.set _sizeof_play_icon_40x40, . - play_icon_40x40
+
+
+.balign 2
 .global play_icon_40x40_alpha
 play_icon_40x40_alpha:
 .incbin "play_icon_40x40_alpha.bin"

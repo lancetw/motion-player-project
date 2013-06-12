@@ -44,6 +44,59 @@ void TIM1_UP_TIM10_IRQHandler(void)
 	}
 }
 
+void DAC_Buffer_Process_Stereo_S16bit_PhotoFrame()
+{
+	int i, halfBufferSize = dac_intr.bufferSize >> 1;
+	uint32_t *pabuf = '\0';
+	uint8_t *outbuf = '\0';
+
+	if(SOUND_DMA_HALF_TRANS_BB){ // Half
+		SOUND_DMA_CLEAR_HALF_TRANS_BB = 1;
+		outbuf = (uint8_t*)dac_intr.buff;
+		pabuf = (uint32_t*)outbuf;
+	} else if(SOUND_DMA_FULL_TRANS_BB) {	// Full
+		SOUND_DMA_CLEAR_FULL_TRANS_BB = 1;
+		outbuf = (uint8_t*)&dac_intr.buff[halfBufferSize];
+		pabuf = (uint32_t*)outbuf;
+	}
+
+	my_fread(outbuf, 1, halfBufferSize, dac_intr.fp);
+	for(i = 0;i < halfBufferSize >> 2;i += 8){ // signed to unsigned
+		pabuf[0] ^= 0x80008000;
+		pabuf[1] ^= 0x80008000;
+		pabuf[2] ^= 0x80008000;
+		pabuf[3] ^= 0x80008000;
+		pabuf[4] ^= 0x80008000;
+		pabuf[5] ^= 0x80008000;
+		pabuf[6] ^= 0x80008000;
+		pabuf[7] ^= 0x80008000;
+		pabuf += 8;
+	}
+	dac_intr.sound_reads += halfBufferSize;
+
+	if(dac_intr.sound_reads > (halfBufferSize * 10)){
+		AUDIO_OUT_ENABLE;
+	}
+
+	if(dac_intr.sound_reads >= dac_intr.contentSize){
+		NVIC_InitTypeDef NVIC_InitStructure;
+
+	    DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
+	    DMA_Cmd(DMA1_Stream1, DISABLE);
+	    AUDIO_OUT_SHUTDOWN;
+
+		/* Disable DMA1_Stream1 gloabal Interrupt */
+		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream1_IRQn;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+		NVIC_Init(&NVIC_InitStructure);
+
+		my_fclose(dac_intr.fp);
+		dac_intr.fp = '\0';
+
+		dac_intr.comp = 1;
+	}
+}
+
 void DAC_Buffer_Process_Stereo_S16bit()
 {
 	int i, halfBufferSize = dac_intr.bufferSize >> 1;
@@ -199,6 +252,139 @@ void setStrSec(char *timeStr, int totalSec)
 	timeStr[it++] = asciiTable[sec / 10];
 	timeStr[it++] = asciiTable[sec % 10];
 	timeStr[it] = '\0';
+}
+
+int PlaySoundPhotoFrame(int id)
+{
+	int ret;
+
+	WAVEFormatStruct wav;
+	WAVEFormatHeaderStruct wavHeader;
+	WAVEFormatChunkStruct wavChunk;
+
+	char str[10];
+
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	MY_FILE *infile;
+
+	if(!(infile = my_fopen(id))){
+		ret = RET_PLAY_STOP;
+		goto EXIT_WAV;
+	}
+
+	my_fread(&wavHeader, 1, sizeof(WAVEFormatHeaderStruct), infile);
+
+	debug.printf("\r\n\n[WAVE]");
+
+	if(strncmp(wavHeader.headStrRIFF, "RIFF", 4) != 0){
+		debug.printf("\r\nNot contain RIFF chunk");
+		ret = RET_PLAY_STOP;
+		goto END_WAV;
+	}
+
+	debug.printf("\r\nFile Size:%d", wavHeader.fileSize);
+
+	if(strncmp(wavHeader.headStrWAVE, "WAVE", 4) != 0){
+		debug.printf("\r\nThis is not WAVE file.");
+		ret = RET_PLAY_STOP;
+		goto END_WAV;
+	}
+
+	int restBytes = wavHeader.fileSize;
+
+	while(1){ // loop until format chunk is found
+		my_fread(&wavChunk, 1, sizeof(WAVEFormatChunkStruct), infile);
+		if(strncmp(wavChunk.chunkfmt, "fmt ", 4) == 0){
+			break;
+		}
+		memset(str, '\0', sizeof(str));
+		debug.printf("\r\n\nchunkType:%s", strncpy(str, wavChunk.chunkfmt, sizeof(wavChunk.chunkfmt)));
+		debug.printf("\r\nchunkSize:%d", wavChunk.chunkSize);
+		restBytes = restBytes - wavChunk.chunkSize - sizeof(WAVEFormatChunkStruct);
+		if(restBytes <= 0){
+			debug.printf("\r\nNot Found Format Chunk.");
+			ret = RET_PLAY_STOP;
+			goto END_WAV;
+		}
+		my_fseek(infile, wavChunk.chunkSize, SEEK_CUR);
+	}
+
+	my_fread(&wav, 1, sizeof(WAVEFormatStruct), infile);
+	my_fseek(infile, wavChunk.chunkSize - sizeof(WAVEFormatStruct), SEEK_CUR);
+
+	restBytes = restBytes - wavChunk.chunkSize - sizeof(WAVEFormatChunkStruct);
+
+	while(1){ // loop until data chunk is found
+		my_fread(&wavChunk, 1, sizeof(WAVEFormatChunkStruct), infile);
+		if(strncmp(wavChunk.chunkfmt, "data", 4) == 0){
+			break;
+		}
+		memset(str, '\0', sizeof(str));
+		debug.printf("\r\n\nchunkType:%s", strncpy(str, wavChunk.chunkfmt, sizeof(wavChunk.chunkfmt)));
+		debug.printf("\r\nchunkSize:%d", wavChunk.chunkSize);
+		restBytes = restBytes - wavChunk.chunkSize - sizeof(WAVEFormatChunkStruct);
+		if(restBytes <= 0){
+			debug.printf("\r\nNot Found Format Chunk.");
+			ret = RET_PLAY_STOP;
+			goto END_WAV;
+		}
+		my_fseek(infile, wavChunk.chunkSize, SEEK_CUR);
+	}
+
+	memset(str, '\0', sizeof(str));
+	debug.printf("\r\n\nchunkType:%s", strncpy(str, wavChunk.chunkfmt, sizeof(wavChunk.chunkfmt)));
+	debug.printf("\r\nchunkSize:%d", wavChunk.chunkSize);
+
+	debug.printf("\r\n\nformatID:%d", wav.formatID);
+	debug.printf("\r\nNum Channel:%d", wav.numChannel);
+	debug.printf("\r\nSampling Rate:%d", wav.sampleRate);
+	debug.printf("\r\nData Speed:%d", wav.dataSpeed);
+	debug.printf("\r\nBlock Size:%d", wav.blockSize);
+	debug.printf("\r\nBit Per Sample:%d", wav.bitPerSample);
+	debug.printf("\r\nBytes Wave Data:%d", wavChunk.chunkSize);
+
+
+    dac_intr.fp = infile;
+    dac_intr.buff = (uint8_t*)cursorRAM;//SOUND_BUFFER;
+    dac_intr.bufferSize = sizeof(cursorRAM);
+    dac_intr.contentSize = infile->fileSize - infile->seekBytes;
+	dac_intr.comp = 0;
+
+    my_fread(dac_intr.buff, 1, dac_intr.bufferSize, dac_intr.fp);
+    dac_intr.sound_reads = dac_intr.bufferSize;
+
+    if(wav.bitPerSample == 8){
+        dac_intr.func = DAC_Buffer_Process_Mono_U8bit;
+    } else {
+        dac_intr.func = DAC_Buffer_Process_Stereo_S16bit_PhotoFrame;
+    }
+
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
+
+	// Enable DMA1_Stream1 gloabal Interrupt
+	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream1_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+    SOUNDInitDAC(wav.sampleRate);
+    SOUNDDMAConf((void*)&DAC->DHR12LD, wav.blockSize, (wav.bitPerSample / 8) * wav.numChannel);
+    DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, ENABLE);
+    DMA_Cmd(DMA1_Stream1, ENABLE);
+
+	END_WAV:
+	EXIT_WAV:
+
+	/* Disable DMA1_Stream1 gloabal Interrupt */
+//	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream1_IRQn;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+//	NVIC_Init(&NVIC_InitStructure);
+
+//	my_fclose(infile);
+
+	return 0;
 }
 
 int PlaySound(int id)

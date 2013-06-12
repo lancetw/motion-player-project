@@ -61,9 +61,10 @@ volatile struct music_src_p {
 } music_src_p;
 
 volatile struct {
-	uint8_t *buff;
+	uint8_t *buff, comp;
 	uint32_t bufferSize,\
-			 sound_reads;
+			 sound_reads, \
+			 contentSize;
 	void (*func)(void);
 	MY_FILE *fp;
 } dac_intr;

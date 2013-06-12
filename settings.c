@@ -38,6 +38,7 @@ settings_item_typedef settings_item_card;
 settings_item_typedef settings_item_cpu;
 settings_item_typedef settings_item_usart;
 settings_item_typedef settings_item_sort;
+settings_item_typedef settings_item_photo_frame_td;
 settings_item_typedef settings_item_brightness;
 settings_item_typedef settings_item_sleeptime;
 settings_item_typedef settings_item_fft;
@@ -64,7 +65,7 @@ const settings_list_typedef settings_root_list[] = {
 		{"CPU", cpu_icon, 2, NEXT_LIST(settings_cpu_list)},
 		{"Display", display_icon, 3, NEXT_LIST(settings_display_list)},
 		{"Debug", debug_icon, 2, NEXT_LIST(settings_debug_list)},
-		{"Filer", folder_icon, 2, NEXT_LIST(settings_filer_list)},
+		{"Filer", folder_icon, 3, NEXT_LIST(settings_filer_list)},
 		{"Music", music_icon, 4, NEXT_LIST(settings_music_list)},
 		{"USB Mass Storage", usb_icon, 2, NEXT_LIST(settings_usb_msc_list)},
 };
@@ -162,6 +163,8 @@ const settings_list_typedef settings_sleeptime_list[] = {
 const settings_list_typedef settings_filer_list[] = {
 		{"..", NULL, 0, NEXT_LIST(settings_root_list)},
 		{"Sort Items", NULL, 3, NEXT_LIST(settings_sort_list), NULL, SETTING_TYPE_ITEM, &settings_item_sort},
+		{"Photo Frame Time Duration", NULL, 5, NEXT_LIST(settings_photo_frame_td_list), NULL, SETTING_TYPE_ITEM, &settings_item_photo_frame_td},
+
 };
 
 const settings_list_typedef settings_sort_list[] = {
@@ -169,6 +172,15 @@ const settings_list_typedef settings_sort_list[] = {
 		{"Enable", NULL, 0, NULL, NULL, 0, &settings_item_sort},
 		{"Disable", NULL, 0, NULL, NULL, 0, &settings_item_sort},
 };
+
+const settings_list_typedef settings_photo_frame_td_list[] = {
+		{"..", NULL, 0, NEXT_LIST(settings_filer_list)},
+		{"1s", NULL, 0, NULL, NULL, 0, &settings_item_photo_frame_td},
+		{"3s", NULL, 0, NULL, NULL, 0, &settings_item_photo_frame_td},
+		{"5s", NULL, 0, NULL, NULL, 0, &settings_item_photo_frame_td},
+		{"10s", NULL, 0, NULL, NULL, 0, &settings_item_photo_frame_td},
+};
+
 
 
 const settings_list_typedef settings_debug_list[] = {
@@ -202,7 +214,7 @@ const settings_list_typedef settings_cpufreq_list[] = {
 		{"200MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
 		{"225MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
 		{"240MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
-		{"250MHz OC Regarded as Gambling!", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
+		{"250MHz OC", NULL, 0, NULL, NULL, 0, &settings_item_cpu},
 };
 
 const settings_list_typedef settings_card_list[] = {
@@ -538,6 +550,16 @@ void SETTINGS_Init()
 	settings_item_sort.item_array = sort_tbl;
 	settings_item_sort.func = SETTINGS_FILER_SORT;
 
+	/* Photo Frame Time Duration Item */
+	static const unsigned int photo_frame_td_tbl[] = {1, 3, 5, 10};
+#define PHOTO_FRAME_TD_TABLE_ITEMS (sizeof(photo_frame_td_tbl) / sizeof(photo_frame_td_tbl[0]))
+	settings_group.filer_conf.photo_frame_td = validate_saved_val(settings_group.filer_conf.photo_frame_td, 3, photo_frame_td_tbl, PHOTO_FRAME_TD_TABLE_ITEMS);
+	settings_item_photo_frame_td.selected_id = selected_id(settings_group.filer_conf.photo_frame_td, photo_frame_td_tbl, PHOTO_FRAME_TD_TABLE_ITEMS);
+	settings_item_photo_frame_td.item_count = PHOTO_FRAME_TD_TABLE_ITEMS;
+	settings_item_photo_frame_td.item_array = photo_frame_td_tbl;
+	settings_item_photo_frame_td.func = SETTINGS_PHOTO_FRAME_TD;
+
+
 	/* Init USART Baudrate Item */
 	static const unsigned int baudrate_tbl[] = {9600, 19200, 38400, 76800, 115200, 230400, 460800, 921600};
 #define BAUDRATE_TABLE_ITEMS (sizeof(baudrate_tbl) / sizeof(baudrate_tbl[0]))
@@ -778,6 +800,19 @@ void *SETTINGS_FILER_SORT(void *arg)
 
 	return NULL;
 }
+
+
+void *SETTINGS_PHOTO_FRAME_TD(void *arg)
+{
+	settings_item_typedef *photo_frame_td_item = (settings_item_typedef*)arg;
+
+	settings_group.filer_conf.photo_frame_td = photo_frame_td_item->item_array[photo_frame_td_item->selected_id];
+
+	SETTINGS_Save();
+
+	return NULL;
+}
+
 
 void *SETTINGS_DISPLAY_BRIGHTNESS(void *arg)
 {

@@ -2,10 +2,14 @@
  *		STM32F4-Discovery Motion Player Project
  *		by Tonsuke
  *
- *		v1.7
- *		2013/06/05
+ *		v1.8
+ *		2013/06/12
  *
+ *		WIKI
  *		http://motionplayer.wiki.fc2.com
+ *
+ *		Git Source
+ *		https://code.google.com/p/motion-player-project/
  */
 
 #include "stm32f4xx_conf.h"
@@ -31,7 +35,7 @@
 
 
 USB_OTG_CORE_HANDLE USB_OTG_dev;
-volatile int8_t usb_msc_enable = 0, usb_msc_card_accessing = 0, usb_msc_progressbar_enable = 0;
+volatile int8_t usb_msc_enable = 0, usb_msc_card_accessing = 0, usb_msc_progressbar_enable = 0, photo_frame_flag = 0;
 
 void TIM8_UP_TIM13_IRQHandler(void) // Back Light & Sleep control timer
 {
@@ -289,12 +293,22 @@ int main(void)
 			break;
 			case FILE_TYPE_JPG: // JPEG
 				arrow_clicked = 0;
+				ret = 0;
+				photo_frame_flag = 0;
+//				uint8_t play_flag = 0;
+//				int WAV_idEntry;
 				do{
 					djpeg_arrows = DJPEG_ARROW_LEFT | DJPEG_ARROW_RIGHT;
+					if((ret & DJPEG_PLAY)){
+						djpeg_arrows |= DJPEG_PLAY;
+						if(LCDStatusStruct.idEntry >= fat.fileCnt){
+							LCDStatusStruct.idEntry = 1;
+						}
+					}
 					if(LCDStatusStruct.idEntry <= 1){
 						djpeg_arrows &= ~DJPEG_ARROW_LEFT;
 					} else {
-						if(setExtensionName(extensionName, LCDStatusStruct.idEntry - 1)){
+						if(setExtensionName(extensionName, LCDStatusStruct.idEntry - 1)){ // check if current - 1 entry is JPEG
 							if(strncmp(extensionName, "JPG", 3) != 0 && strncmp(extensionName, "JPE", 3) != 0){
 								djpeg_arrows &= ~DJPEG_ARROW_LEFT;
 							}
@@ -302,10 +316,10 @@ int main(void)
 							djpeg_arrows &= ~DJPEG_ARROW_LEFT;
 						}
 					}
-					if(LCDStatusStruct.idEntry >= (fat.fileCnt - 1)){
+					if(LCDStatusStruct.idEntry >= (fat.fileCnt - 1)){ // if id entry reaches end of files
 						djpeg_arrows &= ~DJPEG_ARROW_RIGHT;
 					} else {
-						if(setExtensionName(extensionName, LCDStatusStruct.idEntry + 1)){
+						if(setExtensionName(extensionName, LCDStatusStruct.idEntry + 1)){ // check if current - 1 entry is JPEG
 							if(strncmp(extensionName, "JPG", 3) != 0 && strncmp(extensionName, "JPE", 3) != 0){
 								djpeg_arrows &= ~DJPEG_ARROW_RIGHT;
 							}
@@ -313,19 +327,64 @@ int main(void)
 							djpeg_arrows &= ~DJPEG_ARROW_RIGHT;
 						}
 					}
-					ret = dojpeg(LCDStatusStruct.idEntry, djpeg_arrows, arrow_clicked);
+					if(setExtensionName(extensionName, LCDStatusStruct.idEntry)){ // check if current entry is JPEG
+						if(strncmp(extensionName, "JPG", 3) == 0 || strncmp(extensionName, "JPE", 3) == 0){
+							ret = dojpeg(LCDStatusStruct.idEntry, djpeg_arrows, arrow_clicked);
+						}
+					}
 					if(ret == DJPEG_ARROW_LEFT){
 						arrow_clicked = 1;
 						LCDStatusStruct.idEntry--;
 					} else if(ret == DJPEG_ARROW_RIGHT){
 						arrow_clicked = 1;
 						LCDStatusStruct.idEntry++;
+					} else if(ret == DJPEG_PLAY){
+						arrow_clicked = 0;
+						if(!photo_frame_flag){
+							photo_frame_flag = 1;
+						} else {
+							LCDStatusStruct.idEntry++;
+						}
+						/* Experimental photo frame music
+						if(dac_intr.comp == 1){
+							play_flag = 0;
+						}
+						if(!play_flag){
+							play_flag = 1;
+							WAV_idEntry = 0;
+							while(++WAV_idEntry <= (fat.fileCnt - 1)){
+								if(setExtensionName(extensionName, WAV_idEntry)){
+									if(strncmp(extensionName, "WAV", 3) == 0){
+										debug.printf("\r\nFound WAV file at:%d", WAV_idEntry);
+										PlaySoundPhotoFrame(WAV_idEntry);
+										break;
+									}
+								}
+							}
+						}
+						*/
 					}
 					if(LCDStatusStruct.idEntry){
 						cursor.pos = LCDStatusStruct.idEntry % PAGE_NUM_ITEMS;
 						cursor.pageIdx = LCDStatusStruct.idEntry / PAGE_NUM_ITEMS;
 					}
 				}while(LCDStatusStruct.waitExitKey);
+				/* Experimental photo frame music
+				NVIC_InitTypeDef NVIC_InitStructure;
+
+			    DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
+			    DMA_Cmd(DMA1_Stream1, DISABLE);
+			    AUDIO_OUT_SHUTDOWN;
+
+				dac_intr.sound_reads = 0;
+
+				// Disable DMA1_Stream1 gloabal Interrupt
+				NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream1_IRQn;
+				NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+				NVIC_Init(&NVIC_InitStructure);
+
+				my_fclose(dac_intr.fp);
+				 */
 				MergeCircularProgressBar(1);
 				LCDPrintFileList();
     			touch.click = 0;
