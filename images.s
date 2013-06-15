@@ -432,4 +432,303 @@ connect_22x22_alpha:
 .set _sizeof_connect_22x22_alpha, . -connect_22x22_alpha
 
 
+.balign 2
+.global jpeg_22x22
+jpeg_22x22:
+.incbin "jpeg_22x22.bin"
+.global _sizeof_jpeg_22x22
+.set _sizeof_jpeg_22x22, . -jpeg_22x22
+
+.balign 2
+.global jpeg_22x22_alpha
+jpeg_22x22_alpha:
+.incbin "jpeg_22x22_alpha.bin"
+.global _sizeof_jpeg_22x22_alpha
+.set _sizeof_jpeg_22x22_alpha, . -jpeg_22x22_alpha
+
+
+.balign 2
+.global settings_22x22
+settings_22x22:
+.incbin "settings_22x22.bin"
+.global _sizeof_settings_22x22
+.set _sizeof_settings_22x22, . -settings_22x22
+
+.balign 2
+.global settings_22x22_alpha
+settings_22x22_alpha:
+.incbin "settings_22x22_alpha.bin"
+.global _sizeof_settings_22x22_alpha
+.set _sizeof_settings_22x22_alpha, . -settings_22x22_alpha
+
+
+.balign 2
+.global folder_22x22
+folder_22x22:
+.incbin "folder_22x22.bin"
+.global _sizeof_folder_22x22
+.set _sizeof_folder_22x22, . -folder_22x22
+
+.balign 2
+.global folder_22x22_alpha
+folder_22x22_alpha:
+.incbin "folder_22x22_alpha.bin"
+.global _sizeof_folder_22x22_alpha
+.set _sizeof_folder_22x22_alpha, . -folder_22x22_alpha
+
+.balign 2
+.global onpu_22x22
+onpu_22x22:
+.incbin "onpu_22x22.bin"
+.global _sizeof_onpu_22x22
+.set _sizeof_onpu_22x22, . -onpu_22x22
+
+.balign 2
+.global onpu_22x22_alpha
+onpu_22x22_alpha:
+.incbin "onpu_22x22_alpha.bin"
+.global _sizeof_onpu_22x22_alpha
+.set _sizeof_onpu_22x22_alpha, . -onpu_22x22_alpha
+
+
+.balign 2
+.global movie_22x22
+movie_22x22:
+.incbin "movie_22x22.bin"
+.global _sizeof_movie_22x22
+.set _sizeof_movie_22x22, . -movie_22x22
+
+.balign 2
+.global movie_22x22_alpha
+movie_22x22_alpha:
+.incbin "movie_22x22_alpha.bin"
+.global _sizeof_movie_22x22_alpha
+.set _sizeof_movie_22x22_alpha, . -movie_22x22_alpha
+
+
+.balign 2
+.global font_22x22
+font_22x22:
+.incbin "font_22x22.bin"
+.global _sizeof_font_22x22
+.set _sizeof_font_22x22, . -font_22x22
+
+.balign 2
+.global font_22x22_alpha
+font_22x22_alpha:
+.incbin "font_22x22_alpha.bin"
+.global _sizeof_font_22x22_alpha
+.set _sizeof_font_22x22_alpha, . -font_22x22_alpha
+
+
+.balign 2
+.global archive_22x22
+archive_22x22:
+.incbin "archive_22x22.bin"
+.global _sizeof_archive_22x22
+.set _sizeof_archive_22x22, . -archive_22x22
+
+.balign 2
+.global archive_22x22_alpha
+archive_22x22_alpha:
+.incbin "archive_22x22_alpha.bin"
+.global _sizeof_archive_22x22_alpha
+.set _sizeof_archive_22x22_alpha, . -archive_22x22_alpha
+
+
+.balign 2
+.global scrollbar_top_6x7
+scrollbar_top_6x7:
+.incbin "scrollbar_top_6x7.bin"
+.global _sizeof_scrollbar_top_6x7
+.set _sizeof_scrollbar_top_6x7, . -scrollbar_top_6x7
+
+.balign 2
+.global scrollbar_top_6x7_alpha
+scrollbar_top_6x7_alpha:
+.incbin "scrollbar_top_6x7_alpha.bin"
+.global _sizeof_scrollbar_top_6x7_alpha
+.set _sizeof_scrollbar_top_6x7_alpha, . -scrollbar_top_6x7_alpha
+
+
+.balign 2
+.global scrollbar_6x204
+scrollbar_6x204:
+.incbin "scrollbar_6x204.bin"
+.global _sizeof_scrollbar_6x204
+.set _sizeof_scrollbar_6x204, . -scrollbar_6x204
+
+.balign 2
+.global scrollbar_6x204_alpha
+scrollbar_6x204_alpha:
+.incbin "scrollbar_6x204_alpha.bin"
+.global _sizeof_scrollbar_6x204_alpha
+.set _sizeof_scrollbar_6x204_alpha, . -scrollbar_6x204_alpha
+
+
+.balign 2
+.global scrollbar_bottom_6x7
+scrollbar_bottom_6x7:
+.incbin "scrollbar_bottom_6x7.bin"
+.global _sizeof_scrollbar_bottom_6x7
+.set _sizeof_scrollbar_bottom_6x7, . -scrollbar_bottom_6x7
+
+.balign 2
+.global scrollbar_bottom_6x7_alpha
+scrollbar_bottom_6x7_alpha:
+.incbin "scrollbar_bottom_6x7_alpha.bin"
+.global _sizeof_scrollbar_bottom_6x7_alpha
+.set _sizeof_scrollbar_bottom_6x7_alpha, . -scrollbar_bottom_6x7_alpha
+
+
+.balign 2
+.global scrollbar_hline_6x1
+scrollbar_hline_6x1:
+.incbin "scrollbar_hline_6x1.bin"
+.global _sizeof_scrollbar_hline_6x1
+.set _sizeof_scrollbar_hline_6x1, . -scrollbar_hline_6x1
+
+.balign 2
+.global scrollbar_hline_6x1_alpha
+scrollbar_hline_6x1_alpha:
+.incbin "scrollbar_hline_6x1_alpha.bin"
+.global _sizeof_scrollbar_hline_6x1_alpha
+.set _sizeof_scrollbar_hline_6x1_alpha, . -scrollbar_hline_6x1_alpha
+
+
+.balign 2
+.global pic_pref_30x30
+pic_pref_30x30:
+.incbin "pic_pref_30x30.bin"
+.global _sizeof_pic_pref_30x30
+.set _sizeof_pic_pref_30x30, . -pic_pref_30x30
+
+.balign 2
+.global pic_pref_30x30_alpha
+pic_pref_30x30_alpha:
+.incbin "pic_pref_30x30_alpha.bin"
+.global _sizeof_pic_pref_30x30_alpha
+.set _sizeof_pic_pref_30x30_alpha, . -pic_pref_30x30_alpha
+
+
+.balign 2
+.global copy_image_to_100x24
+copy_image_to_100x24:
+.incbin "copy_image_to_100x24.bin"
+.global _sizeof_copy_image_to_100x24
+.set _sizeof_copy_image_to_100x24, . -copy_image_to_100x24
+
+.balign 2
+.global copy_image_to_100x24_alpha
+copy_image_to_100x24_alpha:
+.incbin "copy_image_to_100x24_alpha.bin"
+.global _sizeof_copy_image_to_100x24_alpha
+.set _sizeof_copy_image_to_100x24_alpha, . -copy_image_to_100x24_alpha
+
+
+.balign 2
+.global copy_image_to_music_100x24
+copy_image_to_music_100x24:
+.incbin "copy_image_to_music_100x24.bin"
+.global _sizeof_copy_image_to_music_100x24
+.set _sizeof_copy_image_to_music_100x24, . -copy_image_to_music_100x24
+
+.balign 2
+.global copy_image_to_filer_100x24
+copy_image_to_filer_100x24:
+.incbin "copy_image_to_filer_100x24.bin"
+.global _sizeof_copy_image_to_filer_100x24
+.set _sizeof_copy_image_to_filer_100x24, . -copy_image_to_filer_100x24
+
+
+
+.balign 2
+.global navigation_playing_patch_32x32
+navigation_playing_patch_32x32:
+.incbin "navigation_playing_patch_32x32.bin"
+.global _sizeof_navigation_playing_patch_32x32
+.set _sizeof_navigation_playing_patch_32x32, . -navigation_playing_patch_32x32
+
+.balign 2
+.global navigation_playing_patch_32x32_alpha
+navigation_playing_patch_32x32_alpha:
+.incbin "navigation_playing_patch_32x32_alpha.bin"
+.global _sizeof_navigation_playing_patch_32x32_alpha
+.set _sizeof_navigation_playing_patch_32x32_alpha, . -navigation_playing_patch_32x32_alpha
+
+
+.balign 2
+.global navigation_pause_patch_32x32
+navigation_pause_patch_32x32:
+.incbin "navigation_pause_patch_32x32.bin"
+.global _sizeof_navigation_pause_patch_32x32
+.set _sizeof_navigation_pause_patch_32x32, . -navigation_pause_patch_32x32
+
+.balign 2
+.global navigation_pause_patch_32x32_alpha
+navigation_pause_patch_32x32_alpha:
+.incbin "navigation_pause_patch_32x32_alpha.bin"
+.global _sizeof_navigation_pause_patch_32x32_alpha
+.set _sizeof_navigation_pause_patch_32x32_alpha, . -navigation_pause_patch_32x32_alpha
+
+
+.balign 2
+.global navigation_bar_24x18
+navigation_bar_24x18:
+.incbin "navigation_bar_24x18.bin"
+.global _sizeof_navigation_bar_24x18
+.set _sizeof_navigation_bar_24x18, . -navigation_bar_24x18
+
+.balign 2
+.global navigation_bar_24x18_alpha
+navigation_bar_24x18_alpha:
+.incbin "navigation_bar_24x18_alpha.bin"
+.global _sizeof_navigation_bar_24x18_alpha
+.set _sizeof_navigation_bar_24x18_alpha, . -navigation_bar_24x18_alpha
+
+
+.balign 2
+.global navigation_entire_loop_24x18
+navigation_entire_loop_24x18:
+.incbin "navigation_entire_loop_24x18.bin"
+.global _sizeof_navigation_entire_loop_24x18
+.set _sizeof_navigation_entire_loop_24x18, . -navigation_entire_loop_24x18
+
+.balign 2
+.global navigation_entire_loop_24x18_alpha
+navigation_entire_loop_24x18_alpha:
+.incbin "navigation_entire_loop_24x18_alpha.bin"
+.global _sizeof_navigation_entire_loop_24x18_alpha
+.set _sizeof_navigation_entire_loop_24x18_alpha, . -navigation_entire_loop_24x18_alpha
+
+
+.balign 2
+.global navigation_infinite_entire_loop_24x18
+navigation_infinite_entire_loop_24x18:
+.incbin "navigation_infinite_entire_loop_24x18.bin"
+.global _sizeof_navigation_infinite_entire_loop_24x18
+.set _sizeof_navigation_infinite_entire_loop_24x18, . -navigation_infinite_entire_loop_24x18
+
+.balign 2
+.global navigation_infinite_entire_loop_24x18_alpha
+navigation_infinite_entire_loop_24x18_alpha:
+.incbin "navigation_infinite_entire_loop_24x18_alpha.bin"
+.global _sizeof_navigation_infinite_entire_loop_24x18_alpha
+.set _sizeof_navigation_infinite_entire_loop_24x18_alpha, . -navigation_infinite_entire_loop_24x18_alpha
+
+
+.balign 2
+.global navigation_one_loop_24x18
+navigation_one_loop_24x18:
+.incbin "navigation_one_loop_24x18.bin"
+.global _sizeof_navigation_one_loop_24x18
+.set _sizeof_navigation_one_loop_24x18, . -navigation_one_loop_24x18
+
+.balign 2
+.global navigation_one_loop_24x18_alpha
+navigation_one_loop_24x18_alpha:
+.incbin "navigation_one_loop_24x18_alpha.bin"
+.global _sizeof_navigation_one_loop_24x18_alpha
+.set _sizeof_navigation_one_loop_24x18_alpha, . -navigation_one_loop_24x18_alpha
+
 .section ".text"

@@ -496,7 +496,7 @@ int PlaySound(int id)
 	file_covr.clusterOrg = 0;
 
 	dispArtWork(&file_covr);
-	LCDPutIcon(0, 155, 320, 80, (uint16_t*)music_underbar_320x80, (uint16_t*)music_underbar_320x80_alpha);
+	LCDPutIcon(0, 155, 320, 80, music_underbar_320x80, music_underbar_320x80_alpha);
 
 	memset(str, '\0', sizeof(str));
 	debug.printf("\r\n\nchunkType:%s", strncpy(str, wavChunk.chunkfmt, sizeof(wavChunk.chunkfmt)));

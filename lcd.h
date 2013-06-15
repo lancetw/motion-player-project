@@ -187,7 +187,7 @@ extern void LCDCursorEnter(void);
 extern void LCDStoreBgImgToBuff(int startPosX, int startPosY, int width, int height, uint16_t *p);
 extern void LCDStoreBuffToBgImg(int startPosX, int startPosY, int width, int height, uint16_t *p);
 extern void LCDPutBuffToBgImg(int startPosX, int startPosY, int width, int height, uint16_t *p);
-extern void LCDPutIcon(int startPosX, int startPosY, int width, int height, const uint16_t *d, const uint16_t *a);
+extern void LCDPutIcon(int startPosX, int startPosY, int width, int height, const uint16_t *d, const uint8_t *a);
 extern void LCDTouchPos(void);
 extern void LCDTouchReleased(void);
 extern void LCDTouchPoint(void);

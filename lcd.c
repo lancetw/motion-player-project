@@ -1437,7 +1437,7 @@ void LCDPutBuffToBgImg(int startPosX, int startPosY, int width, int height, uint
 	}
 }
 
-
+/*
 void LCDPutIcon(int startPosX, int startPosY, int width, int height, const uint16_t *d, const uint16_t *a)
 {
 	int i, j, x, y = startPosY;
@@ -1489,6 +1489,59 @@ void LCDPutIcon(int startPosX, int startPosY, int width, int height, const uint1
 		y++;
 	}
 }
+*/
+
+void LCDPutIcon(int startPosX, int startPosY, int width, int height, const uint16_t *d, const uint8_t *a)
+{
+	int i, j, x, y = startPosY;
+	float alpha_ratio;
+	pixel_fmt_typedef pixel_fg, pixel_bg;
+
+	if(a == '\0'){
+		for(y = startPosY;y < startPosY + height;y++){
+			LCDSetGramAddr(startPosX, y);
+			LCDPutCmd(0x0022);
+			for(x = 0;x < width;x++){
+				LCDPutData(*d++);
+			}
+		}
+		return;
+	}
+
+	for(i = 0;i < height;i++){
+		x = startPosX;
+		for(j = 0;j < width;j++){
+			LCDSetGramAddr(x, y);
+			LCDPutCmd(0x0022);
+			LCD->RAM;
+			pixel_bg.color.d16 = LCD->RAM;
+			pixel_fg.color.d16 = *d++;
+			alpha_ratio = (float)*a++ / 255.0f; // Gray Scale
+
+			// Foreground Image
+			pixel_fg.color.R *= alpha_ratio;
+			pixel_fg.color.G *= alpha_ratio;
+			pixel_fg.color.B *= alpha_ratio;
+
+			// Background Image
+			pixel_bg.color.R *= (1.0f - alpha_ratio);
+			pixel_bg.color.G *= (1.0f - alpha_ratio);
+			pixel_bg.color.B *= (1.0f - alpha_ratio);
+
+			// Add colors
+			pixel_fg.color.R += pixel_bg.color.R;
+			pixel_fg.color.G += pixel_bg.color.G;
+			pixel_fg.color.B += pixel_bg.color.B;
+
+			LCDSetGramAddr(x, y);
+			LCDPutCmd(0x0022);
+			LCDPutData(pixel_fg.color.d16);
+			x++;
+		}
+		y++;
+	}
+}
+
 
 
 void LCDTouchPos()

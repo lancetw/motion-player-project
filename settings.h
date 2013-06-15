@@ -74,7 +74,8 @@ typedef struct{
 extern settings_group_typedef settings_group;
 
 typedef struct{
-	const uint16_t *data, *alpha;
+	const uint16_t *data;
+	const uint8_t *alpha;
 }icon_ptr_typedef;
 
 
