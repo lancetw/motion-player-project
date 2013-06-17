@@ -1496,6 +1496,7 @@ void LCDPutIcon(int startPosX, int startPosY, int width, int height, const uint1
 	int i, j, x, y = startPosY;
 	float alpha_ratio;
 	pixel_fmt_typedef pixel_fg, pixel_bg;
+#define F_INV_255 (1.0f / 255.0f)
 
 	if(a == '\0'){
 		for(y = startPosY;y < startPosY + height;y++){
@@ -1516,14 +1517,14 @@ void LCDPutIcon(int startPosX, int startPosY, int width, int height, const uint1
 			LCD->RAM;
 			pixel_bg.color.d16 = LCD->RAM;
 			pixel_fg.color.d16 = *d++;
-			alpha_ratio = (float)*a++ / 255.0f; // Gray Scale
+			alpha_ratio = *a++ * F_INV_255; // Gray Scale
 
-			// Foreground Image
+			// Foreground Color
 			pixel_fg.color.R *= alpha_ratio;
 			pixel_fg.color.G *= alpha_ratio;
 			pixel_fg.color.B *= alpha_ratio;
 
-			// Background Image
+			// Background Color
 			pixel_bg.color.R *= (1.0f - alpha_ratio);
 			pixel_bg.color.G *= (1.0f - alpha_ratio);
 			pixel_bg.color.B *= (1.0f - alpha_ratio);

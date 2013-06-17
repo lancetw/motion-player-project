@@ -46,8 +46,7 @@ int dojpeg(int id, uint8_t djpeg_arrows, uint8_t arrow_clicked)
 	djpeg_dest_ptr dest_mgr = NULL;
 	int touch_flag = 0, ret, copy_image_to;
 	extern settings_group_typedef settings_group;
-	uint8_t time2sleep_cp = 0;
-	time2sleep_cp = settings_group.disp_conf.time2sleep;
+	uint8_t time2sleep_cp = settings_group.disp_conf.time2sleep;
 
 	if(time2sleep_cp){ // prevent to sleep during photo frame process
 		settings_group.disp_conf.time2sleep = 0;
@@ -294,6 +293,8 @@ END_PROCESS:
 				break;
 			}
 		}
+	} else if(time2sleep_cp){
+		settings_group.disp_conf.time2sleep = time2sleep_cp;
 	}
 SKIP_PLAY_DELAY:
 

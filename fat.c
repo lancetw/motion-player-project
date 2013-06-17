@@ -210,9 +210,14 @@ uint8_t setLFNname(uint8_t *pLFNname, uint16_t id, uint8_t extension, uint8_t nu
 
 void makeFileList()
 {
-	int i, j, k, flag, entryIdx = 0;
+#define MAKE_BUF_NUM_SIZE 4096
+#define MAKE_BUF_NUM_SECTOR (MAKE_BUF_NUM_SIZE / 512)
+#define NUM_ENTRY_IN_BUF (MAKE_BUF_NUM_SIZE / 32)
+#define MAX_ENTRY_COUNT 100
+
+	int i, j, k, loop_brake = 0, entryIdx = 0;
 	uint16_t *p = fat.pfileList;
-	uint8_t buf[4096];
+	uint8_t buf[MAKE_BUF_NUM_SIZE];
 
 	fat.fileCnt = 0;
 	if(fat.currentDirEntry == fat.rootDirEntry){ // exception for settings item
@@ -223,20 +228,21 @@ void makeFileList()
 			fat.pfileList = (uint16_t*)malloc(fat.fileCnt * sizeof(uint16_t));
 			p = fat.pfileList;
 			if(fat.currentDirEntry == fat.rootDirEntry){ // exception for settings item
-				*p++ = 65535;
+				*p++ = 0xffff;
 			}
 		}
-		if(flag){
-			flag = 0;
-		}
-		for(k = 0;k < 100;k++){ // 512 * 4096 / 32 = 12800エントリ
-			SDMultiBlockRead((uint8_t*)buf, (fat.currentDirEntry + k * 8), 8);
-			for(j = 0;j < 4096;j += 32){
-				if(i != 0) entryIdx++;	// エントリインデックスを+1
-				if((buf[j + ATTRIBUTES] & (_BV(ATTR_VOLUME) | _BV(ATTR_HIDDEN) | _BV(ATTR_SYSTEM)) ) != 0) continue;
-				// ボリューム属性、隠し属性、システム属性はリストに加えない。
+
+		for(k = 0;k < MAX_ENTRY_COUNT;k++){ // MAX_SEARCH_ENTRY = MAX_ENTRY_COUNT * NUM_ENTRY_IN_BUF
+			SDMultiBlockRead((uint8_t*)buf, (fat.currentDirEntry + k * MAKE_BUF_NUM_SECTOR), MAKE_BUF_NUM_SECTOR);
+			for(j = 0;j < MAKE_BUF_NUM_SIZE;j += 32){
+				if(i != 0){
+					entryIdx++;	// エントリインデックスを+1
+				}
+				if((buf[j + ATTRIBUTES] & (_BV(ATTR_VOLUME) | _BV(ATTR_HIDDEN) | _BV(ATTR_SYSTEM)) ) != 0){ // ボリューム属性、隠し属性、システム属性はリストに加えない。
+					continue;
+				}
 				if((i == 0) && (buf[j] == ENTRY_EMPTY)){ // 空きエントリだったらカウント終了
-					flag = 1;
+					loop_brake = 1;
 					break;
 				}
 				if((buf[j] == ENTRY_DELETED) || (buf[j] == ENTRY_DELETEDB) || \
@@ -249,7 +255,7 @@ void makeFileList()
 					fat.fileCnt++;
 				}
 			}
-			if(flag){
+			if((i == 0) && loop_brake){
 				break;
 			}
 		}
