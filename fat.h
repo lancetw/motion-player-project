@@ -99,9 +99,91 @@
 #define FS_TYPE_FAT32  0x0B
 
 //ERROR
-#define ERROR_FS_TYPE        1
-#define ERROR_CLUSTER_SIZE   2
+#define FS_ERROR_TYPE        1
+#define FS_ERROR_CLUSTER_SIZE   2
+#define FS_ERROR_BYTES_PER_CLUSTER 3
 
+extern const uint8_t partition_system_id[];
+
+typedef struct __attribute__ ((packed)) {
+	uint8_t code[446];
+	struct {
+		uint8_t boot_indicator;
+		uint8_t start_head;
+		uint16_t start_sector_cylinder;
+		uint8_t systemID;
+		uint8_t end_head;
+		uint16_t end_sector_cylinder;
+		uint32_t relative_sectors;
+		uint32_t total_sectors;
+	}partition_table[4];
+	uint8_t signature[2];
+}MBR_structTypedef;
+
+typedef struct __attribute__ ((packed)) {
+	uint8_t jmpOpCode[3];
+	uint8_t OEMName[8];
+	/* FAT16 */
+	uint16_t bytesPerSector;	/* bytes/sector (512) */
+	uint8_t sectorsPerCluster;	/* sectors/cluster */
+	uint16_t reservedSectors;	/* reserved sector for BPB */
+	uint8_t numberOfFATs;	/* the number of file allocation tables */
+	uint16_t rootEntries;	/* the number of root entries (512) */
+	uint16_t totalSectors;	/* the number of secters for this partition */
+	uint8_t mediaDescriptor;	/* 0xf8: Hard Disk */
+	uint16_t sectorsPerFAT;	/* number of sectors for FAT */
+	uint16_t sectorsPerTrack;	/* sector/track (not used) */
+	uint16_t heads;		/* heads number (not used) */
+	uint32_t hiddenSectors;	/* hidden sector number */
+	uint32_t bigTotalSectors;	/* total sector number */
+
+	uint8_t driveNumber;
+	uint8_t unused;
+	uint8_t extBootSignature;
+	uint32_t serialNumber;
+	uint8_t volumeLabel[11];
+	uint8_t fileSystemType[8];	/* "FAT1?   " */
+	uint8_t loadProgramCode[448];
+	uint16_t sig;		/* 0x55, 0xaa */
+}BiosParameterBlockFAT16_structTypedef;
+
+typedef struct __attribute__ ((packed)) {
+    uint8_t    jmpOpCode[3];          /* 0xeb ?? 0x90 */
+    uint8_t    OEMName[8];
+    /* FAT32 */
+	uint16_t bytesPerSector;	/* bytes/sector (512) */
+	uint8_t sectorsPerCluster;	/* sectors/cluster */
+	uint16_t reservedSectors;	/* reserved sector for BPB */
+	uint8_t numberOfFATs;	/* the number of file allocation tables */
+	uint16_t rootEntries;	/* the number of root entries (512) */
+	uint16_t totalSectors;	/* the number of secters for this partition */
+	uint8_t mediaDescriptor;	/* 0xf8: Hard Disk */
+	uint16_t sectorsPerFAT;	/* number of sectors for FAT */
+	uint16_t sectorsPerTrack;	/* sector/track (not used) */
+	uint16_t heads;		/* heads number (not used) */
+	uint32_t hiddenSectors;	/* hidden sector number */
+	uint32_t bigTotalSectors;	/* total sector number */
+
+
+    uint32_t    bigSectorsPerFAT;    /* sector/FAT for FAT32 */
+    uint16_t    extFlags;            /* use index zero (follows) */
+                                    /* bit 7      0: enable FAT mirroring, 1: disable mirroring */
+                                    /* bit 0-3    active FAT number (bit 7 is 1) */
+    uint16_t    FS_Version;
+    uint32_t    rootDirStrtClus;     /* root directory cluster */
+    uint16_t    FSInfoSec;           /* 0xffff: no FSINFO, other: FSINFO sector */
+    uint16_t    bkUpBootSec;         /* 0xffff: no back-up, other: back up boot sector number */
+    uint8_t    reserved[12];
+    /* info */
+    uint8_t    driveNumber;
+    uint8_t    unused;
+    uint8_t    extBootSignature;
+    uint8_t    serialNumber[4];
+    uint8_t    volumeLabel[11];
+    uint8_t    fileSystemType[8];      /* "FAT32   " */
+    uint8_t    loadProgramCode[420];
+    uint8_t    sig[2];                 /* 0x55, 0xaa */
+}BiosParameterBlockFAT32_structTypedef;
 
 volatile struct {
 	uint32_t reservedSectors, \

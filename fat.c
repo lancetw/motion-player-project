@@ -17,64 +17,87 @@
 
 #undef MY_DEBUG
 
+const uint8_t partition_system_id[] = {
+		0x4, // FAT16 <32M
+		0x6, // FAT16
+		0xb, // W95 FAT32
+		0xc, // W95 FAT32 (LBA)
+		0xe, // W95 FAT16 (LBA)
+};
+
+
 int initFat()
 {
-	uint32_t var;
+	MBR_structTypedef mbr;
+	BiosParameterBlockFAT16_structTypedef biosParameterBlock;
 
-	SDBlockRead((uint8_t*)fbuf, 0);						// MBR読み込み
+	SDBlockRead(&mbr, 0); // read mbr
 
-	if(fbuf[MBR_FileSysDsc] == 0x6 || fbuf[MBR_FileSysDsc] == 0x4){
-		fat.fsType = FS_TYPE_FAT16;
-	} else if(fbuf[MBR_FileSysDsc] == 0xb || fbuf[MBR_FileSysDsc] == 0xc) {
-		fat.fsType = FS_TYPE_FAT32;
-	} else {
-		return ERROR_FS_TYPE;
+	int i, j, part_id = -1;
+	for(j = 0;j < 4;j++){ // search fat partition
+		for(i = 0;i < sizeof(partition_system_id) / sizeof(partition_system_id[0]);i++){
+			if(mbr.partition_table[j].systemID == partition_system_id[i]){
+				part_id = j;
+				if(partition_system_id[i] == 0xb || partition_system_id[i] == 0xc){
+					fat.fsType = FS_TYPE_FAT32;
+				} else {
+					fat.fsType = FS_TYPE_FAT16;
+				}
+			}
+		}
+		if(part_id != -1){
+			break;
+		}
 	}
 
-	fat.biosParameterBlock = *((uint32_t*)&fbuf[MBR_BpbSector]); // BPB開始セクタ
-
-	SDBlockRead((void*)fbuf, fat.biosParameterBlock);		// BPB読み込み
-
-	var = *((uint16_t*)&fbuf[BPB_BytsPerSec]); // バイト/セクタ
-
-	//if(var16 != 0x200) return -1;							// 1セクタ512バイトであること
-
-	// セクタ/クラスタ
-	if((fat.sectorsPerCluster = fbuf[BPB_SecPerClus]) < 8){
-		return ERROR_CLUSTER_SIZE; // クラスタサイズが4KBより小さい場合はエラー
+	if(part_id == -1){
+		return FS_ERROR_TYPE;
 	}
 
-	fat.bytesPerCluster = fat.sectorsPerCluster * 512;			// バイト/クラスタ
+	fat.biosParameterBlock = mbr.partition_table[part_id].relative_sectors; // bios parameter block start sector
+
+	SDBlockRead(&biosParameterBlock, fat.biosParameterBlock); // read bios parameter block
+
+	if(biosParameterBlock.bytesPerSector != 512){ // bytes/cluster must be 512B
+		return FS_ERROR_BYTES_PER_CLUSTER;
+	}
+
+	if((fat.sectorsPerCluster = biosParameterBlock.sectorsPerCluster) < 1){ // cluster size
+		return FS_ERROR_CLUSTER_SIZE;
+	}
+
+	fat.bytesPerCluster = fat.sectorsPerCluster * 512;	// bytes/cluster
 
 	fat.clusterDenomShift = 0;
 	while(!(fat.bytesPerCluster & (1 << fat.clusterDenomShift++))){}; // Cluster bytes right shift denominator
 	fat.clusterDenomShift = fat.clusterDenomShift - 1;
 
-	fat.reservedSectors = *((uint16_t*)&fbuf[BPB_RsvdSecCnt]); // 予約領域
+	fat.reservedSectors = biosParameterBlock.reservedSectors;
 
 	if(fat.fsType == FS_TYPE_FAT16){
 		fat_func.getNCluster = getNClusterCache;
 
-		fat.sectorsPerFAT = *((uint16_t*)&fbuf[BPB_FATSz16]); // セクタ/FAT
+		fat.sectorsPerFAT = biosParameterBlock.sectorsPerFAT; // sectors/FAT
 
-		fat.rootDirEntry = fat.biosParameterBlock + fat.reservedSectors + fat.sectorsPerFAT * 2; // RDE(ルートディレクトリエントリ)開始セクタ
-		fat.userDataSector = fat.rootDirEntry + 0x20;	// ユーザデータセクタ
+		fat.rootDirEntry = fat.biosParameterBlock + fat.reservedSectors + fat.sectorsPerFAT * 2; // root directory entry
+		fat.userDataSector = fat.rootDirEntry + 0x20;	// user data sector
 	} else {
 		fat_func.getNCluster = getNClusterCache;
 
-		fat.sectorsPerFAT = *((uint32_t*)&fbuf[BPB_bigSecPerFat]);
+		BiosParameterBlockFAT32_structTypedef *biosParameterBlockFAT32;
+		biosParameterBlockFAT32 = (BiosParameterBlockFAT32_structTypedef*)&biosParameterBlock;
 
-		fat.userDataSector = fat.biosParameterBlock + fat.reservedSectors + fat.sectorsPerFAT * 2;	// ユーザデータセクタ
+		fat.sectorsPerFAT = biosParameterBlockFAT32->bigSectorsPerFAT; // sectors/FAT
 
-		var = *((uint32_t*)&fbuf[BPB_rootDirStrtClus]);
+		fat.userDataSector = fat.biosParameterBlock + fat.reservedSectors + fat.sectorsPerFAT * 2;	// user data sector
 
-		fat.rootDirEntry = (uint32_t)(var - 2) * fat.sectorsPerCluster + fat.userDataSector; // カレントディレクトリエントリを更新
+		fat.rootDirEntry = (uint32_t)(biosParameterBlockFAT32->rootDirStrtClus - 2) * fat.sectorsPerCluster + fat.userDataSector; // root directory entry
 	}
 	fat.fatTable = fat.biosParameterBlock + fat.reservedSectors;
 
-	fat.currentDirEntry = fat.rootDirEntry;		// 現在のディレクトリエントリをルートに
+	fat.currentDirEntry = fat.rootDirEntry;
 
-	makeFileList();							// ルートディレクトリエントリのファイルリスト作成
+	makeFileList();
 
 	memcpy((char*)fat.currentDirName, (char*)root_str, sizeof(root_str));
 
