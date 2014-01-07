@@ -914,7 +914,7 @@ int PlayMotionJpeg(int id){
 		prevSamples = getAtomSize(&atombuf[4]); // 一つ目のsamplesPerChunkをprevSamplesに
 		firstChunk = getSampleSize(atombuf, 4, &fp_stsc); // 二つ目のfirstChunk
 
-		samples = (firstChunk - prevChunk) * prevSamples;
+		samples = firstChunk - prevChunk;
 	}
 
 	frameDuration = getVideoSampleTime(atombuf, totalSamples);
@@ -1051,11 +1051,11 @@ int PlayMotionJpeg(int id){
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, ENABLE);
 	DMA_Cmd(DMA1_Stream1, ENABLE);
 
-	uint32_t totalRasters = 0;
+//	uint32_t totalRasters = 0;
 
 	while(1){
 		CHUNK_OFFSET_HEAD:
-		for(j = 0;j < samples / prevSamples;j++){
+		for(j = 0;j < samples;j++){
 
 			my_fseek(&fp_frame, getSampleSize(atombuf, 4, &fp_stco), SEEK_SET);
 
@@ -1096,7 +1096,7 @@ int PlayMotionJpeg(int id){
 				while(!TIM3_SR_UIF_BB){ // while TIM3->SR Update Flag is unset
 					if(jdinfo.output_scanline < jdinfo.output_height && TIM3->CNT < sample_time_limit){ // JPEGラスタ描画
 						jpeg_read_scanlines(&jdinfo, dest_mgr->buffer, dest_mgr->buffer_height);
-						totalRasters++;
+//						totalRasters++;
 					}
 					if(abs(soundStcoCount - videoStcoCount) > 1 && !soundEndFlag){ //　音ズレ修正
 						if(soundStcoCount >= (sound_stco.numEntry - 2) || videoStcoCount >= (video_stco.numEntry - 2)){
@@ -1183,13 +1183,13 @@ int PlayMotionJpeg(int id){
 		prevChunk = firstChunk; // 今回のfirstChunkをprevChunkに
 		prevSamples = getSampleSize(atombuf, 12, &fp_stsc); // samplesPerChunk sampleDescriptionID
 		firstChunk = getAtomSize(&atombuf[8]); // 次のfirstChunk
-		samples = (firstChunk - prevChunk) * prevSamples; // 次回再生チャンクのサンプル数
+		samples = firstChunk - prevChunk; // 次回再生チャンクのサンプル数
 	}
 
 	END_PROCESS: // 再生終了処理
 	AUDIO_OUT_SHUTDOWN;
 	debug.printf("\r\ntotal_samples:%d video_stco_count:%d sound_stco_count:%d", totalSamples, videoStcoCount, soundStcoCount);
-	debug.printf("\r\ntotalRasters:%d", totalRasters);
+//	debug.printf("\r\ntotalRasters:%d", totalRasters);
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
 	DMA_Cmd(DMA1_Stream1, DISABLE);
 	DMA_DeInit(DMA1_Stream1);
