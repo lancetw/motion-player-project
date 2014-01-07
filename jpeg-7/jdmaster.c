@@ -407,6 +407,32 @@ prepare_range_limit_table (j_decompress_ptr cinfo)
 	  cinfo->sample_range_limit, CENTERJSAMPLE * SIZEOF(JSAMPLE));
 }
 
+void
+prepare_range_limit_table2 (JSAMPLE *jpeg_limit_table, j_decompress_ptr cinfo)
+/* Allocate and fill in the sample_range_limit table */
+{
+  JSAMPLE * table;
+  int i;
+
+  table = jpeg_limit_table;
+  table += (MAXJSAMPLE+1);	/* allow negative subscripts of simple table */
+  cinfo->sample_range_limit = table;
+  /* First segment of "simple" table: limit[x] = 0 for x < 0 */
+  MEMZERO(table - (MAXJSAMPLE+1), (MAXJSAMPLE+1) * SIZEOF(JSAMPLE));
+  /* Main part of "simple" table: limit[x] = x */
+  for (i = 0; i <= MAXJSAMPLE; i++)
+    table[i] = (JSAMPLE) i;
+  table += CENTERJSAMPLE;	/* Point to where post-IDCT table starts */
+  /* End of simple table, rest of first half of post-IDCT table */
+  for (i = CENTERJSAMPLE; i < 2*(MAXJSAMPLE+1); i++)
+    table[i] = MAXJSAMPLE;
+  /* Second half of post-IDCT table */
+  MEMZERO(table + (2 * (MAXJSAMPLE+1)),
+	  (2 * (MAXJSAMPLE+1) - CENTERJSAMPLE) * SIZEOF(JSAMPLE));
+  MEMCOPY(table + (4 * (MAXJSAMPLE+1) - CENTERJSAMPLE),
+	  cinfo->sample_range_limit, CENTERJSAMPLE * SIZEOF(JSAMPLE));
+}
+
 
 /*
  * Master selection of decompression modules.
@@ -435,8 +461,8 @@ master_selection (j_decompress_ptr cinfo)
 	    cinfo->min_DCT_v_scaled_size = DCTSIZE;
   } else {
 	  jpeg_calc_output_dimensions(cinfo);
+	  prepare_range_limit_table(cinfo);
   }
-  prepare_range_limit_table(cinfo);
 
   /* Width of an output scanline must be representable as JDIMENSION. */
   samplesperrow = (long) cinfo->output_width * (long) cinfo->out_color_components;

@@ -67,7 +67,7 @@
 #endif
 
 
-#define MSC_MEDIA_PACKET             16384
+#define MSC_MEDIA_PACKET             8192
 
 /**
   * @}

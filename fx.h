@@ -38,6 +38,9 @@ extern void REVERB_Init(REVERB_Struct_Typedef *RFX, int n);
 extern void REVERB(REVERB_Struct_Typedef *RFX, uint32_t *out_ptr);
 extern void IIR_Set_Params(IIR_Filter_Struct_Typedef *IIR);
 extern void IIR_Filter(IIR_Filter_Struct_Typedef *IIR, uint32_t *out_ptr, float *sout_ptr_A, float *sout_ptr_B);
+extern void IIR_resonator(float fc, float Q, float a[], float b[]);
+extern void IIR_LPF(float fc, float Q, float a[], float b[]);
+extern void IIR_HPF(float fc, float Q, float a[], float b[]);
 extern void IIR_low_shelving(float fc, float Q, float g, float a[], float b[]);
 extern void IIR_peaking(float fc, float Q, float g, float a[], float b[]);
 

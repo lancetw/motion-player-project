@@ -338,6 +338,7 @@ h2v2_merged_upsample (j_decompress_ptr cinfo,
     pixel.color.B = range_limit[y + cblue] >> 3;
     pixel.color.G = range_limit[y + cgreen] >> 2;
     pixel.color.R = range_limit[y + cred] >> 3;
+
     LCD->RAM = pixel.color.d16;
 //	LCD->RAM = range_limit[y + cblue] >> 3 | (range_limit[y + cgreen] >> 2) << 5 | (range_limit[y + cred] >> 3) << 11;
 

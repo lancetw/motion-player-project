@@ -395,18 +395,18 @@ inline uint32_t SDMultiBlockWrite(void *buf, uint32_t blockAddress, uint32_t cou
 	res = SDSendCMD(23, count, SDIO_Response_Short, resbuf);
 
 	res = SDSendCMD(25, cardInfo.csdVer ? blockAddress : (blockAddress << 9), SDIO_Response_Short, resbuf);
-	delay = 1000;
+	delay = 2000;
 	while(delay--){};
 
-	int fifo_cnt = 0;
-	SDIO->DLEN = count << 9;
+//	int fifo_cnt = 0;
+	SDIO->DLEN = count * 512;
 	SDIO->DTIMER = 0x0fffffff;
 	SDIO->ICR = 0xffffffff;
 	SDIO->DCTRL = SDIO_DataBlockSize_512b | SDIO_TransferDir_ToCard | \
 			      SDIO_TransferMode_Block | SDIO_DCTRL_DTEN;
 	do{
 		while((SDIO->STA & SDIO_FLAG_TXFIFOHE)){
-			if(++fifo_cnt <= (count * 16)){
+//			if(++fifo_cnt <= (count * 16)){
 				SDIO->FIFO = pbuf[0];
 				SDIO->FIFO = pbuf[1];
 				SDIO->FIFO = pbuf[2];
@@ -416,16 +416,16 @@ inline uint32_t SDMultiBlockWrite(void *buf, uint32_t blockAddress, uint32_t cou
 				SDIO->FIFO = pbuf[6];
 				SDIO->FIFO = pbuf[7];
 				pbuf += 8;
-			} else {
-				SDIO->FIFO = 0;
-				SDIO->FIFO = 0;
-				SDIO->FIFO = 0;
-				SDIO->FIFO = 0;
-				SDIO->FIFO = 0;
-				SDIO->FIFO = 0;
-				SDIO->FIFO = 0;
-				SDIO->FIFO = 0;
-			}
+//			} else {
+//				SDIO->FIFO = 0;
+//				SDIO->FIFO = 0;
+//				SDIO->FIFO = 0;
+//				SDIO->FIFO = 0;
+//				SDIO->FIFO = 0;
+//				SDIO->FIFO = 0;
+//				SDIO->FIFO = 0;
+//				SDIO->FIFO = 0;
+//			}
 		}
  	 }while(!((sta = SDIO->STA) & (SDIO_FLAG_TXUNDERR | SDIO_FLAG_DCRCFAIL | SDIO_FLAG_DATAEND | SDIO_FLAG_DTIMEOUT | SDIO_FLAG_STBITERR)));
 

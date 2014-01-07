@@ -1,9 +1,10 @@
 #include "stm32f4xx_conf.h"
 #include "lcd.h"
 #include "usart.h"
-#include "xmodem.h"
 #include "delay.h"
 #include <string.h>
+
+#include "xmodem.h"
 
 volatile uint32_t timeout;
 volatile uint8_t Crcflg, seqno;
@@ -185,8 +186,9 @@ void xput()
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x00, 0x00, 0xe0, 0x07, 0x00, 0x00, 0x1f, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	};
+
 	uint8_t buf[1024];
-	int totalPixel = 320 * 240 + sizeof(bmp_header) / sizeof(uint16_t);
+	int totalPixel = LCD_WIDTH * LCD_HEIGHT + sizeof(bmp_header) / sizeof(uint16_t);
 	register int i, n, x, y;
 	uint16_t *p_ram;
 
@@ -202,18 +204,18 @@ void xput()
 	p_ram = (uint16_t*)&buf[sizeof(bmp_header)];
 	n = ( sizeof(buf) -  sizeof(bmp_header) ) / sizeof(uint16_t);
 
-	x = 0, y = 239;
+	x = 0, y = LCD_HEIGHT - 1;
 	LCDSetWindowArea(0 ,0, LCD_WIDTH, LCD_HEIGHT);
-	LCDSetGramAddr(0, 239);
+	LCDSetGramAddr(0, LCD_HEIGHT - 1);
 	LCDPutCmd(0x0022);
 	LCD->RAM;
 
 	do{
 		for(i = 0;i < n;i++){
 			*p_ram++ = LCD->RAM;
-			if(++x >= 320){
+			if(++x >= LCD_WIDTH){
 				x = 0;
-				if(--y < 0) y = 239;
+				if(--y < 0) y = LCD_HEIGHT - 1;
 				LCDSetGramAddr(x, y);
 				LCDPutCmd(0x0022);
 				LCD->RAM;

@@ -254,6 +254,9 @@ void mjpegTouch(void) // タッチペン割込み処理
 	MY_FILE fp_stsc, fp_stsz, fp_stco, fp_jpeg, fp_frame;
 	uint8_t atombuf[12];
 
+	uint8_t *jpeg_limit_table = (uint8_t*)progress_circular_bar_16x16x12_buff;
+	prepare_range_limit_table2(jpeg_limit_table, &jdinfo);
+
 	if(mjpeg_touch.resynch){
 		goto RESYNCH;
 	}
@@ -625,15 +628,19 @@ int PlayMotionJpeg(int id){
 	void *putCharTmp = '\0', *putWideCharTmp = '\0';
 
 	uint32_t fps, frames, prevFrames, sample_time_limit;
-	uint32_t jFrameSize, samples, frameDuration, numEntry;
+	uint32_t samples, frameDuration, numEntry;
 	uint32_t prevChunkSound, prevSamplesSound, firstChunkSound, samplesSound;
 	uint32_t firstChunk = 0, totalSamples = 0, prevChunk = 0, prevSamples = 0, totalBytes = 0;
 	uint32_t videoStcoCount, soundStcoCount, stco_reads;
+	uint32_t prevSamplesBuff[60];
 
 	uint8_t atombuf[512];
 	uint8_t fpsCnt = 0;
 	const char fps1Hz[] = "|/-\\";
 	char timeStr[20];
+
+	uint8_t *jpeg_limit_table = (uint8_t*)progress_circular_bar_16x16x12_buff;
+	prepare_range_limit_table2(jpeg_limit_table, &jdinfo);
 
 	drawBuff_typedef drawBuff;
 	_drawBuff = &drawBuff;
@@ -913,7 +920,6 @@ int PlayMotionJpeg(int id){
 		prevChunk = getSampleSize(atombuf, 12, &fp_stsc); // firstChunk samplesPerChunk sampleDescriptionID 一つ目のfirstChunkをprevChunkに
 		prevSamples = getAtomSize(&atombuf[4]); // 一つ目のsamplesPerChunkをprevSamplesに
 		firstChunk = getSampleSize(atombuf, 4, &fp_stsc); // 二つ目のfirstChunk
-
 		samples = firstChunk - prevChunk;
 	}
 
@@ -1024,7 +1030,7 @@ int PlayMotionJpeg(int id){
 		limitter = 0.96f;
 		break;
 	case 250000000:
-		limitter = 0.97f;
+		limitter = 0.98f;
 		break;
 	default:
 		limitter = 0.80f;
@@ -1058,17 +1064,16 @@ int PlayMotionJpeg(int id){
 		for(j = 0;j < samples;j++){
 
 			my_fseek(&fp_frame, getSampleSize(atombuf, 4, &fp_stco), SEEK_SET);
+			my_fread(prevSamplesBuff, 1, prevSamples * 4, &fp_stsz);
 
 			for(i = 0;i < prevSamples;i++){
-				jFrameSize = getSampleSize(atombuf, 4, &fp_stsz);
-
 				fp_jpeg.seekBytes = 0;
-				fp_jpeg.fileSize = jFrameSize;
+				fp_jpeg.fileSize = getAtomSize(&prevSamplesBuff[i]);
 
-				my_fread((void*)CCM_BASE, 1, jFrameSize, &fp_frame);
-				jpeg_read.frame_size = jFrameSize;
+				my_fread((void*)CCM_BASE, 1, fp_jpeg.fileSize, &fp_frame);
+				jpeg_read.frame_size = fp_jpeg.fileSize;
 
-				totalBytes += jFrameSize;
+				totalBytes += fp_jpeg.fileSize;
 
 				mpool_struct.mem_seek = 0;
 				jpeg_create_decompress(&jdinfo);
@@ -1128,7 +1133,7 @@ int PlayMotionJpeg(int id){
 								prevChunkSound = firstChunkSound; // 今回のfirstChunkをprevChunkに
 								prevSamplesSound = getSampleSize(atombuf, 12, &fp_sound_stsc); // samplesPerChunk sampleDescriptionID
 								firstChunkSound = getAtomSize(&atombuf[8]); // 次のfirstChunk
-								samplesSound = (firstChunkSound - prevChunkSound); // 次回再生チャンクのサンプル数
+								samplesSound = firstChunkSound - prevChunkSound; // 次回再生チャンクのサンプル数
 							}
 						} else {
 							soundEndFlag = 1;
@@ -1143,6 +1148,7 @@ int PlayMotionJpeg(int id){
 							goto END_PROCESS;
 						}
 						if(ret == 1){ // 一時停止処理へ飛ぶ 返り値:0 そのまま復帰 :1 移動先のサンプルタイムを取得
+							samples /= prevSamples;
 							getVideoSampleTime(atombuf, 0); // サンプルタイム初期化
 							getVideoSampleTime(atombuf, totalSamples); // 移動先のサンプルタイム取得
 							dac_intr.sound_reads = prevSamplesSound * soundSampleBlocks; // DAC読み込みバッファ数を埋めておく

@@ -200,6 +200,48 @@ void IIR_Filter(IIR_Filter_Struct_Typedef *IIR, uint32_t *out_ptr, float *sout_p
 	}
 }
 
+void IIR_resonator(float fc, float Q, float a[], float b[])
+{
+  fc = tanf(M_PI_F * fc) / (2.0f * M_PI_F);
+
+  a[0] = 1.0f + 2.0f * M_PI_F * fc / Q + 4.0f * M_PI_F * M_PI_F * fc * fc;
+  a[1] = (8.0f * M_PI_F * M_PI_F * fc * fc - 2.0f) / a[0];
+  a[2] = (1.0f - 2.0f * M_PI_F * fc / Q + 4.0f * M_PI_F * M_PI_F * fc * fc) / a[0];
+  b[0] = 2.0f * M_PI_F * fc / Q / a[0];
+  b[1] = 0.0f;
+  b[2] = -2.0f * M_PI_F * fc / Q / a[0];
+
+  a[0] = 1.0f;
+}
+
+void IIR_LPF(float fc, float Q, float a[], float b[])
+{
+  fc = tanf(M_PI_F * fc) / (2.0f * M_PI_F);
+
+  a[0] = 1.0f + 2.0f * M_PI_F * fc / Q + 4.0f * M_PI_F * M_PI_F * fc * fc;
+  a[1] = (8.0f * M_PI_F * M_PI_F * fc * fc - 2.0f) / a[0];
+  a[2] = (1.0f - 2.0f * M_PI_F * fc / Q + 4.0f * M_PI_F * M_PI_F * fc * fc) / a[0];
+  b[0] = 4.0f * M_PI_F * M_PI_F * fc * fc / a[0];
+  b[1] = 8.0f * M_PI_F * M_PI_F * fc * fc / a[0];
+  b[2] = 4.0f * M_PI_F * M_PI_F * fc * fc / a[0];
+
+  a[0] = 1.0f;
+}
+
+void IIR_HPF(float fc, float Q, float a[], float b[])
+{
+  fc = tanf(M_PI_F * fc) / (2.0f * M_PI_F);
+
+  a[0] = 1.0f + 2.0f * M_PI_F * fc / Q + 4.0f * M_PI_F * M_PI_F * fc * fc;
+  a[1] = (8.0f * M_PI_F * M_PI_F * fc * fc - 2.0f) / a[0];
+  a[2] = (1.0f - 2.0f * M_PI_F * fc / Q + 4.0f * M_PI_F * M_PI_F * fc * fc) / a[0];
+  b[0] = 1.0f / a[0];
+  b[1] = -2.0f / a[0];
+  b[2] = 1.0f / a[0];
+
+  a[0] = 1.0f;
+}
+
 void IIR_low_shelving(float fc, float Q, float g, float a[], float b[])
 {
   fc = tanf(M_PI_F * fc) / (2.0f * M_PI_F);

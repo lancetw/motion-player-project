@@ -901,6 +901,214 @@ void LCDPutBgImgMusic(){
 	}
 }
 
+void DrawLine(int x1, int y1, int x2, int y2, colors color)
+{
+    int W = x2 - x1;
+    int H = y2 - y1;
+    int dx = 0;
+    int dy = 0;
+    int Wy = 0;
+    int Hx = 0;
+    if (W >= H)
+    {
+        for (dx = 0; dx <= W; dx ++)
+        {
+        	LCDSetGramAddr(x1+dx, y1+dy);
+			LCDPutCmd(0x0022);
+			LCDPutData(colorc[color]);
+            Hx += H;
+            if (Wy < Hx)
+            {
+                Wy += W;
+                dy += 1;
+            }
+        }
+    }
+    else
+    {
+        for (dy = 0; dy <= H; dy ++)
+        {
+        	LCDSetGramAddr(x1+dx, y1+dy);
+			LCDPutCmd(0x0022);
+			LCDPutData(colorc[color]);
+
+            Wy += W;
+            if (Hx < Wy)
+            {
+                Hx += H;
+                dx += 1;
+            }
+        }
+    }
+}
+
+__attribute__( ( always_inline ) ) __INLINE void LCDPset(uint16_t x, uint16_t y, colors color){
+	LCDSetGramAddr(x, y);
+	LCDPutCmd(0x0022);
+	LCDPutData(colorc[color]);
+}
+
+__attribute__( ( always_inline ) ) __INLINE void LCDPset2(uint16_t x, uint16_t y, uint16_t data){
+	LCDSetGramAddr(x, y);
+	LCDPutCmd(0x0022);
+	LCDPutData(data);
+}
+
+
+__attribute__( ( always_inline ) ) __INLINE uint16_t LCDGetPos(uint16_t x, uint16_t y){
+	LCDSetGramAddr(x, y);
+	LCDPutCmd(0x0022);
+	LCD->RAM;
+	return LCD->RAM;
+}
+
+void LCDDrawLine2(int16_t sPosX, int16_t sPosY, int16_t ePosX, int16_t ePosY, colors color){
+	int dw, dh, e, x, y;
+
+	dw = ePosX - sPosX;
+	dh = ePosY - sPosY;
+
+	e = 0;
+
+	if(dw >= dh){
+		y = sPosY;
+		for(x = sPosX;x <= ePosX;x++){
+			LCDPset(x, y, color);
+
+			e += 2 * dh;
+			if(e >= (2 * dw)){
+				y++;
+				e -= 2 * dw;
+			}
+		}
+	} else{
+
+	}
+}
+
+void LCDDrawLine(uint16_t sPosX, uint16_t sPosY, uint16_t ePosX, uint16_t ePosY, colors color){
+	int x, y, w, h, offsetY;
+	float delta, alpha;
+	pixel_fmt_typedef pixel_fg, pixel_bg, pixel;
+
+	w = ePosX - sPosX;
+	h = ePosY - sPosY;
+
+//	debug.printf("\r\n\nPlot");
+//	debug.printf("\r\ndelta:%f", delta);
+//	debug.printf("\r\noffsetY:%d", offsetY);
+
+	if(abs(w) >= abs(h)){
+		if(ePosX == sPosX){
+			offsetY = sPosY + 0.5f;
+			for(x = sPosX;x <= ePosX;x++){
+				y = offsetY;
+				LCDPset(x, y, color);
+			}
+			return;
+		}
+
+		delta = (float)h / (float)w;
+		offsetY = -delta * sPosX + sPosY + 0.5f;
+
+		if(ePosX >= sPosX){
+			for(x = sPosX;x <= ePosX;x++){
+				y = delta * x + offsetY;
+				alpha = delta * x + offsetY;
+				alpha = 1.0f - (alpha - y);
+				pixel_bg.color.d16 = LCDGetPos(x, y);
+				pixel_fg.color.d16 = colorc[color];
+				pixel.color.R = pixel_fg.color.R * alpha + pixel_bg.color.R * (1.0f - alpha);
+				pixel.color.G = pixel_fg.color.G * alpha + pixel_bg.color.G * (1.0f - alpha);
+				pixel.color.B = pixel_fg.color.B * alpha + pixel_bg.color.B * (1.0f - alpha);
+				LCDPset2(x, y, pixel.color.d16);
+				debug.printf("\r\nA x:%d y:%d delta:%f", x, y, delta);
+//				LCDPset(x, y, color);
+			}
+		} else {
+			for(x = sPosX;x >= ePosX;x--){
+				y = delta * x + offsetY;
+
+				alpha = delta * x + offsetY;
+				alpha = 1.0f - (alpha - y);
+				pixel_bg.color.d16 = LCDGetPos(x, y);
+				pixel_fg.color.d16 = colorc[color];
+				pixel.color.R = pixel_fg.color.R * alpha + pixel_bg.color.R * (1.0f - alpha);
+				pixel.color.G = pixel_fg.color.G * alpha + pixel_bg.color.G * (1.0f - alpha);
+				pixel.color.B = pixel_fg.color.B * alpha + pixel_bg.color.B * (1.0f - alpha);
+				LCDPset2(x, y, pixel.color.d16);
+
+				debug.printf("\r\nB x:%d y:%d delta:%f", x, y, delta);
+//				LCDPset(x, y, color);
+			}
+		}
+	} else {
+		if(ePosY >= sPosY){
+			if(sPosX == ePosX){
+				for(y = sPosY;y <= ePosY;y++){
+					x = sPosX;
+//					debug.printf("\r\nC0 x:%d y:%d delta:%f", x, y, delta);
+					LCDPset(x, y, color);
+				}
+			} else {
+				delta = (float)h / (float)w;
+				offsetY = -delta * sPosX + sPosY + 0.5f;
+				delta = 1.0f / delta;
+
+				for(y = sPosY;y <= ePosY;y++){
+					x = (y - offsetY) * delta;
+					debug.printf("\r\nC x:%d y:%d delta:%f", x, y, delta);
+					LCDPset(x, y, color);
+
+					alpha = (y - offsetY) * delta;
+					alpha = 1.0f - (alpha - x);
+					pixel_bg.color.d16 = LCDGetPos(x - 1, y);
+					pixel_fg.color.d16 = colorc[color];
+					pixel.color.R = pixel_fg.color.R * alpha + pixel_bg.color.R * (1.0f - alpha);
+					pixel.color.G = pixel_fg.color.G * alpha + pixel_bg.color.G * (1.0f - alpha);
+					pixel.color.B = pixel_fg.color.B * alpha + pixel_bg.color.B * (1.0f - alpha);
+					LCDPset2(x - 1, y, pixel.color.d16);
+
+					alpha = 1.0f - alpha;
+					pixel_bg.color.d16 = LCDGetPos(x + 1, y);
+					pixel_fg.color.d16 = colorc[color];
+					pixel.color.R = pixel_fg.color.R * alpha + pixel_bg.color.R * (1.0f - alpha);
+					pixel.color.G = pixel_fg.color.G * alpha + pixel_bg.color.G * (1.0f - alpha);
+					pixel.color.B = pixel_fg.color.B * alpha + pixel_bg.color.B * (1.0f - alpha);
+					LCDPset2(x + 1, y, pixel.color.d16);
+				}
+			}
+		} else {
+			if(sPosX == ePosX){
+				for(y = sPosY;y >= ePosY;y--){
+					x = sPosX;
+//					debug.printf("\r\nD0 x:%d y:%d delta:%f", x, y, delta);
+					LCDPset(x, y, color);
+				}
+			} else {
+				delta = (float)h / (float)w;
+				offsetY = -delta * sPosX + sPosY + 0.5f;
+				delta = 1.0f / delta;
+
+				for(y = sPosY;y >= ePosY;y--){
+					x = (y - offsetY) * delta;
+					alpha = (y - offsetY) * delta;
+					alpha = 1.0f - (alpha - x);
+					pixel_bg.color.d16 = LCDGetPos(x, y);
+					pixel_fg.color.d16 = colorc[color];
+					pixel.color.R = pixel_fg.color.R * alpha + pixel_bg.color.R * (1.0f - alpha);
+					pixel.color.G = pixel_fg.color.G * alpha + pixel_bg.color.G * (1.0f - alpha);
+					pixel.color.B = pixel_fg.color.B * alpha + pixel_bg.color.B * (1.0f - alpha);
+					LCDPset2(x, y, pixel.color.d16);
+
+					debug.printf("\r\nD x:%d y:%d delta:%f", x, y, delta);
+//					LCDPset(x, y, color);
+				}
+			}
+		}
+	}
+
+}
 
 void LCDDrawSquare(uint16_t x, uint16_t y, uint16_t width, uint16_t height, colors color)
 {
