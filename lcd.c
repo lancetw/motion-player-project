@@ -9,11 +9,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "lcd.h"
 #include "pcf_font.h"
 #include "xpt2046.h"
 #include "fat.h"
 #include "usart.h"
+#include "sound.h"
 #include "delay.h"
 #include "mpool.h"
 
@@ -39,6 +41,7 @@ volatile time_typedef time;
 volatile cursor_typedef cursor;
 volatile LCDStatusStruct_typedef LCDStatusStruct;
 
+LCD_FUNC_typedef LCD_FUNC;
 
 void DMA_ProgressBar_Conf(){
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
@@ -461,9 +464,6 @@ void LCDInit(void)
 	LCDGotoXY(0, 0);
 	LCDClear(240, 320, BLACK);
 
-	LCD_FUNC.putChar = LCDPutWideCharDefault;
-	LCD_FUNC.putWideChar = LCDPutWideCharDefault;
-
 	MergeCircularProgressBar(1);
 	jpeg_read.buf_type = 0;
 
@@ -541,7 +541,11 @@ void LCDPutStringSJIS(uint8_t *s, uint8_t color)
 		tc  = *s++ << 8;
 		tc |= *s++;
 
-		LCD_FUNC.putWideChar(sjis_utf16_conv(tc), color);
+		if(!pcf_font.c_loaded){
+			LCD_FUNC.putWideChar(sjis_utf16_conv(tc), color);
+		} else {
+			LCD_FUNC.putWideChar(C_FONT_UNDEF_CODE, color);
+		}
 	}
 }
 
@@ -558,14 +562,9 @@ uint16_t LCDPutStringSJISN(uint16_t startPosX, uint16_t endPosX, uint8_t lineCnt
 		*/
 		if(clx > endPosX){
 			if(lineCnt-- > 1){
-				if(pcf_font.isOK){
-					if(LCD_FUNC.putChar == PCFPutChar16px){
-						cly += 17;
-						yPos += 17;
-					} else {
-						cly += 13;
-						yPos += 13;
-					}
+				if((LCD_FUNC.putChar == PCFPutChar16px) || (LCD_FUNC.putChar == C_PCFPutChar16px)){
+					cly += 17;
+					yPos += 17;
 				} else {
 					cly += 13;
 					yPos += 13;
@@ -584,7 +583,12 @@ uint16_t LCDPutStringSJISN(uint16_t startPosX, uint16_t endPosX, uint8_t lineCnt
 
 		tc  = *s++ << 8;
 		tc |= *s++;
-		LCD_FUNC.putWideChar(sjis_utf16_conv(tc), color);
+
+		if(!pcf_font.c_loaded){
+			LCD_FUNC.putWideChar(sjis_utf16_conv(tc), color);
+		} else {
+			LCD_FUNC.putWideChar(C_FONT_UNDEF_CODE, color);
+		}
 	}
 
 	return yPos;
@@ -596,13 +600,18 @@ uint16_t LCDGetStringSJISPixelLength(uint8_t *s, uint16_t font_width)
 
 	while(*s != '\0'){
 		if((*s >= 0x20 && *s <= 0x7F) || (*s >= 0xA0 && *s <= 0xDF)){
-			len += PCFGetCharPixelLength(*s++, font_width);
+			len += LCD_FUNC.getCharLength(*s++, font_width);
 			continue;
 		}
 
 		tc  = *s++ << 8;
 		tc |= *s++;
-		len += PCFGetCharPixelLength(sjis_utf16_conv(tc), font_width);
+
+		if(!pcf_font.c_loaded){
+			len += LCD_FUNC.getCharLength(sjis_utf16_conv(tc), font_width);
+		} else {
+			len += LCD_FUNC.getCharLength(C_FONT_UNDEF_CODE, font_width);
+		}
 	}
 
 	return len;
@@ -615,14 +624,9 @@ uint16_t LCDPutStringLFN(uint16_t startPosX, uint16_t endPosX, uint8_t lineCnt, 
 	while(1){
 		if(clx > endPosX){
 			if(lineCnt-- > 1){
-				if(pcf_font.isOK){
-					if(LCD_FUNC.putChar == PCFPutChar16px){
-						cly += 17;
-						yPos += 17;
-					} else {
-						cly += 13;
-						yPos += 13;
-					}
+				if((LCD_FUNC.putChar == PCFPutChar16px) || (LCD_FUNC.putChar == C_PCFPutChar16px)){
+					cly += 17;
+					yPos += 17;
 				} else {
 					cly += 13;
 					yPos += 13;
@@ -644,7 +648,11 @@ uint16_t LCDPutStringLFN(uint16_t startPosX, uint16_t endPosX, uint8_t lineCnt, 
 			LCD_FUNC.putChar(tc, color);
 			continue;
 		}
-		LCD_FUNC.putWideChar(tc, color);
+		if(!pcf_font.c_loaded){
+			LCD_FUNC.putWideChar(tc, color);
+		} else {
+			LCD_FUNC.putWideChar(C_FONT_UNDEF_CODE, color);
+		}
 	}
 
 	return yPos;
@@ -659,14 +667,19 @@ uint16_t LCDGetStringLFNPixelLength(void *s, uint16_t font_width){
 
 		if(tc == 0x0000) return len;
 		if(tc <= 0x007F){
-			len += PCFGetCharPixelLength(tc, font_width);
+			len += LCD_FUNC.getCharLength(tc, font_width);
 			continue;
 		}
-		len += PCFGetCharPixelLength(tc, font_width);
+		if(!pcf_font.c_loaded){
+			len += LCD_FUNC.getCharLength(tc, font_width);
+		} else {
+			len += LCD_FUNC.getCharLength(C_FONT_UNDEF_CODE, font_width);
+		}
 	}
 
 	return len;
 }
+
 
 void LCDPutAscii(uint16_t asc, colors color)
 {
@@ -729,14 +742,9 @@ uint16_t LCDPutStringUTF8(uint16_t startPosX, uint16_t endPosX, uint8_t lineCnt,
 	while(*s != '\0'){
 		if(clx > endPosX){
 			if(lineCnt-- > 1){
-				if(pcf_font.isOK){
-					if(LCD_FUNC.putChar == PCFPutChar16px){
-						cly += 17;
-						yPos += 17;
-					} else {
-						cly += 13;
-						yPos += 13;
-					}
+				if((LCD_FUNC.putChar == PCFPutChar16px) || (LCD_FUNC.putChar == C_PCFPutChar16px)){
+					cly += 17;
+					yPos += 17;
 				} else {
 					cly += 13;
 					yPos += 13;
@@ -758,7 +766,11 @@ uint16_t LCDPutStringUTF8(uint16_t startPosX, uint16_t endPosX, uint8_t lineCnt,
 			tc |= ((uint16_t)*s++ << 6) & 0x0FC0;
 			tc |=  (uint16_t)*s++ & 0x003F;
 
-			LCD_FUNC.putChar(tc, color);
+			if(!pcf_font.c_loaded){
+				LCD_FUNC.putChar(tc, color);
+			} else {
+				LCD_FUNC.putChar(C_FONT_UNDEF_CODE, color);
+			}
 		}
 	}
 
@@ -771,7 +783,7 @@ uint16_t LCDGetStringUTF8PixelLength(uint8_t *s, uint16_t font_width)
 
 	while(*s != '\0'){
 		if((*s >= 0x20 && *s <= 0x7F)){
-			len += PCFGetCharPixelLength(*s++, font_width);
+			len += LCD_FUNC.getCharLength(*s++, font_width);
 			continue;
 		}
 
@@ -780,7 +792,11 @@ uint16_t LCDGetStringUTF8PixelLength(uint8_t *s, uint16_t font_width)
 			tc |= ((uint16_t)*s++ << 6) & 0x0FC0;
 			tc |=  (uint16_t)*s++ & 0x003F;
 
-			len += PCFGetCharPixelLength(tc, font_width);
+			if(!pcf_font.c_loaded){
+				len += LCD_FUNC.getCharLength(tc, font_width);
+			} else {
+				len += LCD_FUNC.getCharLength(C_FONT_UNDEF_CODE, font_width);
+			}
 		}
 	}
 
@@ -1152,7 +1168,9 @@ void LCDPrintFileList()
 
 
 	step = fat.fileCnt - idEntry;
-	if(step >= PAGE_NUM_ITEMS) step = PAGE_NUM_ITEMS;
+	if(step >= PAGE_NUM_ITEMS){
+		step = PAGE_NUM_ITEMS;
+	}
 
 	cly = HEIGHT_ITEM;
 
@@ -1174,19 +1192,30 @@ void LCDPrintFileList()
 		strncpy(fileNameStr, (char*)&fbuf[entryPointOffset], 8); // 8文字ファイル名をコピー
 		strtok(fileNameStr, " "); // スペースがあればNULLに置き換える
 
+		if(fbuf[entryPointOffset + NT_Reserved] & NT_U2L_NAME){ // Name Upper to Lower
+			fileNameStr[0] = tolower(fileNameStr[0]);
+			fileNameStr[1] = tolower(fileNameStr[1]);
+			fileNameStr[2] = tolower(fileNameStr[2]);
+			fileNameStr[3] = tolower(fileNameStr[3]);
+			fileNameStr[4] = tolower(fileNameStr[4]);
+			fileNameStr[5] = tolower(fileNameStr[5]);
+			fileNameStr[6] = tolower(fileNameStr[6]);
+			fileNameStr[7] = tolower(fileNameStr[7]);
+		}
+
 		var32 = *((uint32_t*)&fbuf[entryPointOffset + FILESIZE]); // ファイルサイズ取得
 
 		if(var32 >= 1000000){
 			var32 /= 1000000;
-			sprintf(fileSizeStr, "%dMB", var32);
+			SPRINTF(fileSizeStr, "%dMB", var32);
 		} else if(var32 >= 1000){
 			var32 /= 1000;
-			sprintf(fileSizeStr, "%dKB", var32);
+			SPRINTF(fileSizeStr, "%dKB", var32);
 		} else {
-			sprintf(fileSizeStr, "%dB", var32);
+			SPRINTF(fileSizeStr, "%dB", var32);
 		}
 
-		if(!(fbuf[entryPointOffset + ATTRIBUTES] & _BV(ATTR_DIRECTORY))){
+		if(!(fbuf[entryPointOffset + ATTRIBUTES] & ATTR_DIRECTORY)){
 			if(fbuf[entryPointOffset + 8] != 0x20){
 				strncpy(fileTypeStr, (char*)&fbuf[entryPointOffset + 8], 3);
 				//strcat(fileNameStr, ".");
@@ -1567,7 +1596,7 @@ void LCDCursorEnter()
 
 	entryPointOffset = getListEntryPoint(idEntry); // リスト上にあるIDファイルエントリの先頭位置をセット
 
-	if(!(fbuf[entryPointOffset + ATTRIBUTES] & _BV(ATTR_DIRECTORY))){ // ファイルの属性をチェック
+	if(!(fbuf[entryPointOffset + ATTRIBUTES] & ATTR_DIRECTORY)){ // ファイルの属性をチェック
 		strncpy(fileType, (char*)&fbuf[entryPointOffset + 8], 3);
 		if(strcmp(fileType, "WAV") == 0){
 			LCDStatusStruct.idEntry = idEntry;
@@ -1614,6 +1643,8 @@ void LCDCursorEnter()
 		LCDSetGramAddr(303, 1);
 		LCDPutCmd(0x0022);
 		DMA_ProgressBar_Conf();
+
+		shuffle_play.flag_make_rand = 0; // clear shuffle flag
 
 		changeDir(idEntry); // idEntryのディレクトリに移動する
 		LCDPrintFileList(); // ファイルリスト表示

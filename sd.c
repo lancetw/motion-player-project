@@ -975,7 +975,7 @@ SD_INIT:
 	debug.printf("\r\nHigh Capacity:%s", cardInfo.csdVer ? "Yes" : "No");
 	char s[10];
 	if(cardInfo.speedClass){
-		sprintf(s, "CLASS%d", cardInfo.speedClass);
+		SPRINTF(s, "CLASS%d", cardInfo.speedClass);
 	} else {
 		strcpy(s, "N/A");
 	}

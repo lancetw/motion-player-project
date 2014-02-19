@@ -34,6 +34,8 @@ static const char type[][21] = {
 #define PCF_GLYPH_NAMES			(1 << 7)
 #define PCF_BDF_ACCELERATORS	(1 << 8)
 
+#define C_FONT_UNDEF_CODE       0x0080
+
 typedef struct toc_entry {
 	uint32_t type, \
 			 format, \
@@ -91,7 +93,7 @@ volatile struct {
 	encode_info_typedef enc_info;
 	cache_typedef cache;
 	metrics_typedef metrics;
-	int8_t isOK;
+	int8_t c_loaded;
 }pcf_font;
 
 
@@ -130,6 +132,8 @@ static const float color_tone_table_3bit[] = {
 		1.0
 };
 
+extern const char internal_flash_pcf_font[];
+extern char _sizeof_internal_flash_pcf_font[];
 
 typedef struct{
 	uint16_t code, size;
@@ -147,6 +151,13 @@ extern void PCFCacheGlyph(uint16_t code, uint16_t font_width);
 extern void PCFPutCharCache(uint16_t code, colors color);
 extern void PCFPutString(const uint16_t *uni_str, int n, colors color);
 extern uint16_t PCFGetCharPixelLength(uint16_t code, uint16_t font_width);
+
+extern int C_PCFFontInit(uint32_t fileAddr, size_t fileSize);
+extern void C_PCFPutChar(uint16_t code, colors color);
+extern void C_PCFPutChar16px(uint16_t code, colors color);
+extern void C_PCFPutString(const uint16_t *uni_str, int n, colors color);
+extern void C_PCFPutString16px(const uint16_t *uni_str, int n, colors color);
+extern uint16_t C_PCFGetCharPixelLength(uint16_t code, uint16_t font_width);
 
 
 #endif /* PCF_FONT_H_ */

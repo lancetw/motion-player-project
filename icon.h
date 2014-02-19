@@ -219,6 +219,8 @@ extern const uint8_t navigation_infinite_entire_loop_24x18_alpha[],_sizeof_navig
 extern const uint16_t navigation_one_loop_24x18[],_sizeof_navigation_one_loop_24x18[];
 extern const uint8_t navigation_one_loop_24x18_alpha[],_sizeof_navigation_one_loop_24x18_alphap[];
 
+extern const uint16_t navigation_shuffle_24x18[],_sizeof_navigation_shuffle_24x18[];
+extern const uint8_t navigation_shuffle_24x18_alpha[],_sizeof_navigation_shuffle_24x18_alpha[];
 
 
 static const uint16_t scrollbar_top_6x7[],_sizeof_scrollbar_top_6x7[];

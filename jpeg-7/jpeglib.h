@@ -438,6 +438,11 @@ struct jpeg_decompress_struct {
 
   // added by tonsuke. referenced by use_merged_upsample in jdmaster.c
   int useMergedUpsampling;
+  // added by tonsuke. Private state for YCC->RGB conversion
+  int * Cr_r_tab;		/* => table for Cr to R conversion */
+  int * Cb_b_tab;		/* => table for Cb to B conversion */
+  INT32 * Cr_g_tab;		/* => table for Cr to G conversion */
+  INT32 * Cb_g_tab;		/* => table for Cb to G conversion */
 
   /* Source of compressed data */
   struct jpeg_source_mgr * src;

@@ -26,6 +26,7 @@
 
 #include "usart.h"
 
+#include "settings.h"
 //#define MY_DEBUG
 
 #ifdef USE_WINDOWS_MESSAGEBOX
@@ -199,9 +200,9 @@ format_message (j_common_ptr cinfo, char * buffer)
 
   /* Format the message into the passed buffer */
   if (isstring)
-    sprintf(buffer, msgtext, err->msg_parm.s);
+    SPRINTF(buffer, msgtext, err->msg_parm.s);
   else
-    sprintf(buffer, msgtext,
+    SPRINTF(buffer, msgtext,
 	    err->msg_parm.i[0], err->msg_parm.i[1],
 	    err->msg_parm.i[2], err->msg_parm.i[3],
 	    err->msg_parm.i[4], err->msg_parm.i[5],

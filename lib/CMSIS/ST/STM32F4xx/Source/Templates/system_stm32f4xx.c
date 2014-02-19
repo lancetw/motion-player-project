@@ -144,16 +144,15 @@
 
 
 /* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N */
-#define PLL_M      4 // 2
-//#define PLL_N      250
-int PLL_N;
+//int PLL_M;
+//int PLL_N;
 
 /* SYSCLK = PLL_VCO / PLL_P */
-#define PLL_P      2
+//int PLL_P;
 
 /* USB OTG FS, SDIO and RNG Clock =  PLL_VCO / PLLQ */
 /* #define PLL_Q      10 // 7@168MHz 10@250MHz */
-int PLL_Q;
+//int PLL_Q;
 
 /* PLLI2S_VCO = (HSE_VALUE Or HSI_VALUE / PLL_M) * PLLI2S_N
    I2SCLK = PLLI2S_VCO / PLLI2S_R */
@@ -357,54 +356,78 @@ int validate_val(int val, int default_val, const unsigned int tbl[], int tbl_siz
   */
 static void SetSysClock(void)
 {
+
 #define FLASH_SECTOR_1_OFFSET (0x4000)
 #define FLASH_SETTING_OFFSET (0x3000)
 #define FLASH_SETTING_BASE (FLASH_BASE + FLASH_SECTOR_1_OFFSET + FLASH_SETTING_OFFSET)
 
-  static const unsigned int cpu_freq_tbl[] = {72, 100, 120, 168, 200, 225, 240, 250};
-  PLL_N = *(int*)FLASH_SETTING_BASE;
-  PLL_N = validate_val(PLL_N, 168, cpu_freq_tbl, sizeof(cpu_freq_tbl) / sizeof(cpu_freq_tbl[0]));
+	int PLL_M;
+	int PLL_N;
+	int PLL_P;
+	int PLL_Q;
 
-  /* Determin USB OTG FS, SDIO and RNG Clock from PLL_N */
-  uint32_t FLASH_LATENCY;
-  switch(PLL_N){
-  case 72:
-	  PLL_Q = 3; // 72 / 3 = 24MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_2WS;
-	  break;
-  case 100:
-	  PLL_Q = 4; // 100 / 4 = 25MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_3WS;
-	  break;
-  case 120:
-	  PLL_Q = 5; // 120 / 5 = 24MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_3WS;
-	  break;
-  case 168:
-	  PLL_Q = 7; // 168 / 7 = 24MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_5WS;
-	  break;
-  case 200:
-	  PLL_Q = 8; // 200 / 8 = 25MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_5WS;
-	  break;
-  case 225:
-	  PLL_Q = 9; // 225 / 9 = 25MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_6WS;
-	  break;
-  case 240:
-	  PLL_Q = 10; // 240 / 10 = 24MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_7WS;
-	  break;
-  case 250:
-	  PLL_Q = 10; // 250 / 10 = 25MHz
-	  FLASH_LATENCY = FLASH_ACR_LATENCY_7WS;
-	  break;
-  default:
-	  break;
-  }
+	static const unsigned int cpu_freq_tbl[] = {72, 100, 120, 168, 200, 240, 250};
+	PLL_N = *(int*)FLASH_SETTING_BASE;
+	PLL_N = validate_val(PLL_N, 168, cpu_freq_tbl, sizeof(cpu_freq_tbl) / sizeof(cpu_freq_tbl[0]));
+//	PLL_N = 168;
 
-  SystemCoreClock = (((HSE_VALUE / PLL_M) * PLL_N) / PLL_P);
+	/* Determin USB OTG FS, SDIO and RNG Clock from PLL_N */
+	uint32_t FLASH_LATENCY;
+	switch(PLL_N){
+	case 72:
+		PLL_M = 8;
+		PLL_N = 144;
+		PLL_P = 2;
+		PLL_Q = 3; // 144 / 3 = 48MHz
+		FLASH_LATENCY = FLASH_ACR_LATENCY_2WS;
+		break;
+	case 100:
+		PLL_M = 8;
+		PLL_N = 200;
+		PLL_P = 2;
+		PLL_Q = 4; // 200 / 4 = 50MHz
+		FLASH_LATENCY = FLASH_ACR_LATENCY_3WS;
+		break;
+	case 120:
+		PLL_M = 8;
+		PLL_N = 240;
+		PLL_P = 2;
+		PLL_Q = 5; // 240 / 5 = 48MHz
+		FLASH_LATENCY = FLASH_ACR_LATENCY_3WS;
+		break;
+	case 168:
+		PLL_M = 8;
+		PLL_N = 336;
+		PLL_P = 2;
+		PLL_Q = 7; // 336 / 7 = 48MHz
+		FLASH_LATENCY = FLASH_ACR_LATENCY_5WS;
+		break;
+	case 200:
+		PLL_M = 8;
+		PLL_N = 400;
+		PLL_P = 2;
+		PLL_Q = 8; // 400 / 8 = 50MHz
+		FLASH_LATENCY = FLASH_ACR_LATENCY_5WS;
+		break;
+	case 240:
+		PLL_M = 8;
+		PLL_N = 480;
+		PLL_P = 2;
+		PLL_Q = 10; // 480 / 10 = 48MHz
+		FLASH_LATENCY = FLASH_ACR_LATENCY_7WS;
+		break;
+	case 250:
+		PLL_M = 8;
+		PLL_N = 500;
+		PLL_P = 2;
+		PLL_Q = 10; // 500 / 10 = 50MHz
+		FLASH_LATENCY = FLASH_ACR_LATENCY_7WS;
+		break;
+	default:
+		break;
+	}
+
+	SystemCoreClock = (((HSE_VALUE / PLL_M) * PLL_N) / PLL_P);
 
 /******************************************************************************/
 /*            PLL (clocked by HSE) used as System clock source                */

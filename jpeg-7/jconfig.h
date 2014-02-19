@@ -3,7 +3,7 @@
 /* see jconfig.txt for explanations */
 
 #define NO_GETENV
-#define MAX_ALLOC_CHUNK 30000
+#define MAX_ALLOC_CHUNK 20000
 #define ALLIGN_TYPE long
 
 

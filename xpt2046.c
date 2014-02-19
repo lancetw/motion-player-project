@@ -46,16 +46,22 @@ uint16_t GetAxis(uint8_t control){
 	return ret;
 }
 
-void EXTI4_IRQHandler(void) // PINIRQピンの立ち下がりエッジ検出割込みハンドラ
+void resetDimLightTimer()
 {
-	TOUCH_PINIRQ_DISABLE; // 外部割込みLine4不許可
-	EXTI_ClearFlag(EXTI_Line4); // 外部割込みLine4フラグクリア
-
 	time.prevTime = time.curTime;
 	if(time.flags.dimLight){
 		TIM_SetCompare2(TIM4, (int)(1000 * (float)settings_group.disp_conf.brightness / 100.0f) - 1);
 		time.flags.dimLight = 0;
 	}
+}
+
+void EXTI4_IRQHandler(void) // PINIRQピンの立ち下がりエッジ検出割込みハンドラ
+{
+	TOUCH_PINIRQ_DISABLE; // 外部割込みLine4不許可
+	EXTI_ClearFlag(EXTI_Line4); // 外部割込みLine4フラグクリア
+
+	resetDimLightTimer();
+
 	if(time.flags.stop_mode){
 		TOUCH_PINIRQ_ENABLE; // 外部割込みLine4許可
 		TIM_Cmd(TIM5, DISABLE); // TIM5割込み不許可
@@ -76,7 +82,6 @@ void TIM1_BRK_TIM9_IRQHandler(void)
 		TIM_ClearITPendingBit(TIM9, TIM_IT_Update);
 
 		if(!touch.update){
-
 			TIM_Cmd(TIM9, DISABLE);
 			TIM_SetCounter(TIM9, 0);
 			TIM_ITConfig(TIM9, TIM_IT_Update, DISABLE);

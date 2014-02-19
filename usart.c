@@ -20,6 +20,8 @@ void USART3_IRQHandler(void)
 	USART_ClearFlag(USART3, USART_IT_RXNE);
 	__IO uint16_t recv = USART3->DR;
 
+	resetDimLightTimer();
+
 	if(recv == 'p') {
 		xput();
 		return;
@@ -36,7 +38,10 @@ void USART3_IRQHandler(void)
 
 	switch(recv){
 		case CURSOR_LEFT:
-			changeDir(0);
+			LCDPutCursorBar(cursor.pos);
+			LCDStoreCursorBar(0);
+			cursor.pos = 0, cursor.pageIdx = 0;
+			LCDCursorEnter();
 			break;
 		case CURSOR_UP:
 			LCDCursorUp();

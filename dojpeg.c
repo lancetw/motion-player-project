@@ -300,6 +300,10 @@ SKIP_PLAY_DELAY:
 
 	while(!ret && LCDStatusStruct.waitExitKey){
 		while(!touch.click){
+			if(!LCDStatusStruct.waitExitKey){
+				ret = -1;
+				goto EXIT_JPEG;
+			}
 			if(time.flags.stop_mode){
 				LCDStatusStruct.waitExitKey = 0;
 				break;
@@ -513,6 +517,7 @@ SKIP_PLAY_DELAY:
 		while(GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_RESET);
 		touch.click = 0;
 	}
+	EXIT_JPEG:
 	touch.func = LCDTouchPoint;
 
 	if(time2sleep_cp){

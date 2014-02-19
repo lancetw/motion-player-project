@@ -17,9 +17,7 @@ volatile struct {
 	uint32_t mem_seek;
 }mpool_struct;
 
-//volatile uint8_t mempool[32768];
 uint8_t mempool[38000];
-
 
 extern void create_mpool();
 extern void* mpool_alloc(uint32_t sizeofmemory);

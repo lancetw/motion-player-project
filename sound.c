@@ -47,8 +47,8 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void DAC_Buffer_Process_Stereo_S16bit_PhotoFrame()
 {
 	int i, halfBufferSize = dac_intr.bufferSize >> 1;
-	uint32_t *pabuf = '\0';
-	uint8_t *outbuf = '\0';
+	uint32_t *pabuf;
+	uint8_t *outbuf;
 
 	if(SOUND_DMA_HALF_TRANS_BB){ // Half
 		SOUND_DMA_CLEAR_HALF_TRANS_BB = 1;
@@ -100,8 +100,8 @@ void DAC_Buffer_Process_Stereo_S16bit_PhotoFrame()
 void DAC_Buffer_Process_Stereo_S16bit()
 {
 	int i, halfBufferSize = dac_intr.bufferSize >> 1;
-	uint32_t *pabuf = '\0';
-	uint8_t *outbuf = '\0';
+	uint32_t *pabuf;
+	uint8_t *outbuf;
 
 	if(SOUND_DMA_HALF_TRANS_BB){ // Half
 		SOUND_DMA_CLEAR_HALF_TRANS_BB = 1;
@@ -132,7 +132,7 @@ void DAC_Buffer_Process_Stereo_S16bit()
 void DAC_Buffer_Process_Mono_U8bit()
 {
 	int halfBufferSize = dac_intr.bufferSize >> 1;
-	uint8_t *outbuf = '\0';
+	uint8_t *outbuf;
 
 	if(SOUND_DMA_HALF_TRANS_BB){ // Half
 		SOUND_DMA_CLEAR_HALF_TRANS_BB = 1;
@@ -215,7 +215,7 @@ void SOUNDInitDAC(uint32_t sampleRate)
 	DAC_Init(DAC_Channel_2, &DAC_InitStructure);
 
 	DAC_DMACmd(DAC_Channel_1, ENABLE);
-//	DAC_DMACmd(DAC_Channel_2, ENABLE);
+	DAC_DMACmd(DAC_Channel_2, ENABLE);
 
 	DAC_Cmd(DAC_Channel_1, ENABLE);
 	DAC_Cmd(DAC_Channel_2, ENABLE);
@@ -521,25 +521,26 @@ int PlaySound(int id)
 
 	int xTag = 110, yTag = 87, disp_limit = 300, strLen;
 
-	if(pcf_font.isOK){
-		putCharTmp = LCD_FUNC.putChar;
-		putWideCharTmp = LCD_FUNC.putWideChar;
+	putCharTmp = LCD_FUNC.putChar;
+	putWideCharTmp = LCD_FUNC.putWideChar;
 
+	if(!pcf_font.c_loaded){
 		LCD_FUNC.putChar = PCFPutChar16px;
 		LCD_FUNC.putWideChar = PCFPutChar16px;
-		disp_limit = 288;
+	} else {
+		LCD_FUNC.putChar = C_PCFPutChar16px;
+		LCD_FUNC.putWideChar = C_PCFPutChar16px;
 	}
+	disp_limit = 288;
 
 	uint8_t strNameLFN[80];
 	if(setLFNname(strNameLFN, id, LFN_WITHOUT_EXTENSION, sizeof(strNameLFN))){
-		if(pcf_font.isOK){
-			strLen = LCDGetStringLFNPixelLength(strNameLFN, 16);
-			if((xTag + strLen) < LCD_WIDTH){
-				disp_limit = LCD_WIDTH - 1;
-			} else {
-				disp_limit = LCD_WIDTH - 20;
-				yTag -= 10;
-			}
+		strLen = LCDGetStringLFNPixelLength(strNameLFN, 16);
+		if((xTag + strLen) < LCD_WIDTH){
+			disp_limit = LCD_WIDTH - 1;
+		} else {
+			disp_limit = LCD_WIDTH - 20;
+			yTag -= 10;
 		}
 		LCDGotoXY(xTag + 1, yTag + 1);
 		LCDPutStringLFN(xTag + 1, disp_limit, 2, strNameLFN, BLACK);
@@ -555,13 +556,11 @@ int PlaySound(int id)
 		LCDPutString(strNameSFN, WHITE);
 	}
 
-	if(pcf_font.isOK){
-		LCD_FUNC.putChar = putCharTmp;
-		LCD_FUNC.putWideChar = putWideCharTmp;
-	}
+	LCD_FUNC.putChar = putCharTmp;
+	LCD_FUNC.putWideChar = putWideCharTmp;
 
 	char s[20];
-	sprintf((char*)s, "%d/%d", id, fat.fileCnt - 1);
+	SPRINTF((char*)s, "%d/%d", id, fat.fileCnt - 1);
 	LCDGotoXY(21, MUSIC_INFO_POS_Y + 1);
 	LCDPutString((char*)s, BLACK);
 	LCDGotoXY(20, MUSIC_INFO_POS_Y);
@@ -578,13 +577,13 @@ int PlaySound(int id)
 		LCDGotoXY(110, MUSIC_INFO_POS_Y);
 		LCDPutString(wav.numChannel == 2 ? "Stereo" : "Mono", WHITE);
 
-		sprintf(s, "%1.2fMbps", (float)(wav.dataSpeed * 8) / 1000000.0f);
+		SPRINTF(s, "%1.2fMbps", (float)(wav.dataSpeed * 8) / 1000000.0f);
 		LCDGotoXY(171, MUSIC_INFO_POS_Y + 1);
 		LCDPutString(s, BLACK);
 		LCDGotoXY(170, MUSIC_INFO_POS_Y);
 		LCDPutString(s, WHITE);
 
-		sprintf(s, "%dHz", (int)wav.sampleRate);
+		SPRINTF(s, "%dHz", (int)wav.sampleRate);
 		LCDGotoXY(241, MUSIC_INFO_POS_Y + 1);
 		LCDPutString(s, BLACK);
 		LCDGotoXY(240, MUSIC_INFO_POS_Y);
@@ -592,10 +591,10 @@ int PlaySound(int id)
 	}
 
 
-	if(pcf_font.isOK){ // Cache Play Time Glyphs
-		putCharTmp = LCD_FUNC.putChar;
-		putWideCharTmp = LCD_FUNC.putWideChar;
+	putCharTmp = LCD_FUNC.putChar;
+	putWideCharTmp = LCD_FUNC.putWideChar;
 
+	if(!pcf_font.c_loaded){
 		LCD_FUNC.putChar = PCFPutCharCache;
 		LCD_FUNC.putWideChar = PCFPutCharCache;
 
@@ -603,6 +602,9 @@ int PlaySound(int id)
 
 		PCFSetGlyphCacheStartAddress((void*)cursorRAM);
 		PCFCachePlayTimeGlyphs(12);
+	} else {
+		LCD_FUNC.putChar = C_PCFPutChar;
+		LCD_FUNC.putWideChar = C_PCFPutChar;
 	}
 
 	media_data_totalBytes = wavChunk.chunkSize;
@@ -676,6 +678,10 @@ int PlaySound(int id)
 	case NAV_INFINITE_ONE_PLAY: // infinite 1 play
 		LCDPutIcon(_drawBuff->navigation_loop.x, _drawBuff->navigation_loop.y, _drawBuff->navigation_loop.width, _drawBuff->navigation_loop.height, \
 				navigation_one_loop_24x18, navigation_one_loop_24x18_alpha);
+		break;
+	case NAV_SHUFFLE_PLAY: // shuffle
+		LCDPutIcon(_drawBuff->navigation_loop.x, _drawBuff->navigation_loop.y, _drawBuff->navigation_loop.width, _drawBuff->navigation_loop.height, \
+				navigation_shuffle_24x18, navigation_shuffle_24x18_alpha);
 		break;
 	default:
 		break;
@@ -970,10 +976,8 @@ SKIP_SEEK:
 
 	EXIT_WAV:
 
-	if(pcf_font.isOK){
-		LCD_FUNC.putChar = putCharTmp;
-		LCD_FUNC.putWideChar = putWideCharTmp;
-	}
+	LCD_FUNC.putChar = putCharTmp;
+	LCD_FUNC.putWideChar = putWideCharTmp;
 
 	END_WAV:
 
@@ -1033,7 +1037,7 @@ void musicTouch()
 	if((touch.posX > (_drawBuff->navigation_loop.x - 15) && touch.posX < (_drawBuff->navigation_loop.x + _drawBuff->navigation_loop.width + 15)) && \
 			(touch.posY > (_drawBuff->navigation_loop.y - 10) && touch.posY < (_drawBuff->navigation_loop.y + _drawBuff->navigation_loop.height + 10))){ //
 
-		Update_Navigation_Loop_Icon(navigation_loop_mode = ++navigation_loop_mode % 4);
+		Update_Navigation_Loop_Icon(navigation_loop_mode = ++navigation_loop_mode % 5);
 
 		while(GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_RESET);
 		return;
@@ -1126,7 +1130,7 @@ int musicPause()
 	if((touch.posX > (_drawBuff->navigation_loop.x - 10) && touch.posX < (_drawBuff->navigation_loop.x + _drawBuff->navigation_loop.width + 10)) && \
 			(touch.posY > (_drawBuff->navigation_loop.y - 10) && touch.posY < (_drawBuff->navigation_loop.y + _drawBuff->navigation_loop.height + 10))){ //
 
-		Update_Navigation_Loop_Icon(navigation_loop_mode = ++navigation_loop_mode % 4);
+		Update_Navigation_Loop_Icon(navigation_loop_mode = ++navigation_loop_mode % 5);
 
 		return 30;
 	}
@@ -1234,8 +1238,55 @@ int musicPause()
 	return ret;
 }
 
+void make_shuffle_table(unsigned int seed){
+	  int i, j;
+	  uint8_t rnd;
+	  static uint8_t rand_table[256];
+
+	  srand(seed);
+
+	  if(!shuffle_play.flag_make_rand){
+		  shuffle_play.pRandIdEntry = rand_table;
+		  shuffle_play.flag_make_rand = 1;
+	  }
+
+	  shuffle_play.pRandIdEntry[1] = rand() % (fat.fileCnt - 1) + 1;
+
+	  for(j = 2;j <= (fat.fileCnt - 1);j++){
+	  LOOP:
+	    rnd = rand() % (fat.fileCnt - 1) + 1;
+	    for(i = 1;i < j;i++){
+	      if(shuffle_play.pRandIdEntry[i] == rnd){
+	        goto LOOP;
+	      }
+	    }
+	    shuffle_play.pRandIdEntry[j] = rnd;
+	  }
+}
 
 int PlayMusic(int id){
+	int idNext, idCopy = id;
+	unsigned int seed;
+
+	if(navigation_loop_mode == NAV_SHUFFLE_PLAY){
+		if(!shuffle_play.mode_changed){
+			idNext = id;
+			if(++idNext >= fat.fileCnt){
+				idNext = 1;
+			}
+			seed = TIM8->CNT;
+			do{
+				make_shuffle_table(seed);
+				seed += 100;
+			}while((id == shuffle_play.pRandIdEntry[idNext]) && (fat.fileCnt > 2));
+		}
+		if(shuffle_play.play_continuous){
+			id = shuffle_play.pRandIdEntry[id];
+		}
+		shuffle_play.mode_changed = 1;
+	}
+	shuffle_play.play_continuous = 1;
+
 	uint16_t entryPointOffset = getListEntryPoint(id);
 
 	if(fbuf[entryPointOffset + 8] != 0x20){
@@ -1256,7 +1307,9 @@ int PlayMusic(int id){
 		}
 	}
 
-	if(navigation_loop_mode == NAV_INFINITE_PLAY_ENTIRE || id <= fat.fileCnt){
+	id = idCopy;
+
+	if((navigation_loop_mode == NAV_INFINITE_PLAY_ENTIRE) || (navigation_loop_mode == NAV_SHUFFLE_PLAY) || id <= fat.fileCnt){
 		LCDStatusStruct.waitExitKey = 1;
 		return RET_PLAY_NEXT;
 	} else {

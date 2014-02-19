@@ -1,6 +1,14 @@
 .section ".rodata"
 
 .balign 2
+.global internal_flash_pcf_font
+internal_flash_pcf_font:
+.incbin "mplus_1c_bold_basic_latin.pcf"
+.global _sizeof_internal_flash_pcf_font
+.set _sizeof_internal_flash_pcf_font, . - internal_flash_pcf_font
+
+
+.balign 2
 .global music_underbar_320x80
 music_underbar_320x80:
 .incbin "music_underbar_320x80.bin"
@@ -730,5 +738,23 @@ navigation_one_loop_24x18_alpha:
 .incbin "navigation_one_loop_24x18_alpha.bin"
 .global _sizeof_navigation_one_loop_24x18_alpha
 .set _sizeof_navigation_one_loop_24x18_alpha, . -navigation_one_loop_24x18_alpha
+
+
+.balign 2
+.global navigation_shuffle_24x18
+navigation_shuffle_24x18:
+.incbin "navigation_shuffle_24x18.bin"
+.global _sizeof_navigation_shuffle_24x18
+.set _sizeof_navigation_shuffle_24x18, . -navigation_shuffle_24x18
+
+
+.balign 2
+.global navigation_shuffle_24x18_alpha
+navigation_shuffle_24x18_alpha:
+.incbin "navigation_shuffle_24x18_alpha.bin"
+.global _sizeof_navigation_shuffle_24x18_alpha
+.set _sizeof_navigation_shuffle_24x18_alpha, . -navigation_shuffle_24x18_alpha
+
+
 
 .section ".text"

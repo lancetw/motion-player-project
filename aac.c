@@ -379,29 +379,31 @@ int PlayAAC(int id)
 		yTag += 10;
 	}
 
-	if(pcf_font.isOK){
-		putCharTmp = LCD_FUNC.putChar;
-		putWideCharTmp = LCD_FUNC.putWideChar;
+	putCharTmp = LCD_FUNC.putChar;
+	putWideCharTmp = LCD_FUNC.putWideChar;
 
+	if(!pcf_font.c_loaded){
 		LCD_FUNC.putChar = PCFPutChar16px;
 		LCD_FUNC.putWideChar = PCFPutChar16px;
-		disp_limit = 288;
+	} else {
+		LCD_FUNC.putChar = C_PCFPutChar16px;
+		LCD_FUNC.putWideChar = C_PCFPutChar16px;
 	}
+	disp_limit = 288;
+
 
 	if(nameTag[0] != 0){
-		if(pcf_font.isOK){
-			strLen = LCDGetStringUTF8PixelLength(nameTag, 16);
-			if((xTag + strLen) < LCD_WIDTH){
-				disp_limit = LCD_WIDTH - 1;
-			} else {
-				disp_limit = LCD_WIDTH - 20;
-				yTag -= 8;
-			}
+		strLen = LCDGetStringUTF8PixelLength(nameTag, 16);
+		if((xTag + strLen) < LCD_WIDTH){
+			disp_limit = LCD_WIDTH - 1;
+		} else {
+			disp_limit = LCD_WIDTH - 20;
+			yTag -= 8;
+		}
 
-			strLen = LCDGetStringUTF8PixelLength(albumTag, 12);
-			if((xTag + strLen) > (LCD_WIDTH - 20)){
-				yTag -= 6;
-			}
+		strLen = LCDGetStringUTF8PixelLength(albumTag, 12);
+		if((xTag + strLen) > (LCD_WIDTH - 20)){
+			yTag -= 6;
 		}
 		LCDGotoXY(xTag + 1, yTag + 1);
 		LCDPutStringUTF8(xTag + 1, disp_limit, 2, nameTag, BLACK);
@@ -412,14 +414,12 @@ int PlayAAC(int id)
 	} else {
 		uint8_t strNameLFN[80];
 		if(setLFNname(strNameLFN, id, LFN_WITHOUT_EXTENSION, sizeof(strNameLFN))){
-			if(pcf_font.isOK){
-				strLen = LCDGetStringLFNPixelLength(strNameLFN, 16);
-				if((xTag + strLen) < LCD_WIDTH){
-					disp_limit = LCD_WIDTH - 1;
-				} else {
-					disp_limit = LCD_WIDTH - 20;
-					yTag -= 10;
-				}
+			strLen = LCDGetStringLFNPixelLength(strNameLFN, 16);
+			if((xTag + strLen) < LCD_WIDTH){
+				disp_limit = LCD_WIDTH - 1;
+			} else {
+				disp_limit = LCD_WIDTH - 20;
+				yTag -= 10;
 			}
 			LCDGotoXY(xTag + 1, yTag + 1);
 			LCDPutStringLFN(xTag + 1, disp_limit, 2, strNameLFN, BLACK);
@@ -437,11 +437,9 @@ int PlayAAC(int id)
 		yTag += 20;
 	}
 
-	if(pcf_font.isOK){
-		LCD_FUNC.putChar = putCharTmp;
-		LCD_FUNC.putWideChar = putWideCharTmp;
-		disp_limit = 300;
-	}
+	LCD_FUNC.putChar = putCharTmp;
+	LCD_FUNC.putWideChar = putWideCharTmp;
+	disp_limit = 300;
 
 	if(albumTag[0] != 0){
 		LCDGotoXY(xTag + 1, yTag + 1);
@@ -462,7 +460,7 @@ int PlayAAC(int id)
 	LCDPutIcon(0, 155, 320, 80, music_underbar_320x80, music_underbar_320x80_alpha);
 
 	char s[20];
-	sprintf((char*)s, "%d/%d", id, fat.fileCnt - 1);
+	SPRINTF((char*)s, "%d/%d", id, fat.fileCnt - 1);
 	LCDGotoXY(21, MUSIC_INFO_POS_Y + 1);
 	LCDPutString((char*)s, BLACK);
 	LCDGotoXY(20, MUSIC_INFO_POS_Y);
@@ -480,9 +478,9 @@ int PlayAAC(int id)
 		LCDPutString(media_info.format.numChannel == 2 ? "Stereo" : "Mono", WHITE);
 
 		if(media_info.bitrate.avgBitrate){
-			sprintf(s, "%dkbps", (int)(media_info.bitrate.avgBitrate / 1000));
+			SPRINTF(s, "%dkbps", (int)(media_info.bitrate.avgBitrate / 1000));
 		} else {
-			sprintf(s, "---kbps");
+			SPRINTF(s, "---kbps");
 		}
 		LCDGotoXY(171, MUSIC_INFO_POS_Y + 1);
 		LCDPutString(s, BLACK);
@@ -490,17 +488,17 @@ int PlayAAC(int id)
 		LCDPutString(s, WHITE);
 
 
-		sprintf(s, "%dHz", aacFrameInfo.sampRateCore);
+		SPRINTF(s, "%dHz", aacFrameInfo.sampRateCore);
 		LCDGotoXY(241, MUSIC_INFO_POS_Y + 1);
 		LCDPutString(s, BLACK);
 		LCDGotoXY(240, MUSIC_INFO_POS_Y);
 		LCDPutString(s, WHITE);
 	}
 
-	if(pcf_font.isOK){ // Cache Play Time Glyphs
-		putCharTmp = LCD_FUNC.putChar;
-		putWideCharTmp = LCD_FUNC.putWideChar;
+	putCharTmp = LCD_FUNC.putChar;
+	putWideCharTmp = LCD_FUNC.putWideChar;
 
+	if(!pcf_font.c_loaded){
 		LCD_FUNC.putChar = PCFPutCharCache;
 		LCD_FUNC.putWideChar = PCFPutCharCache;
 
@@ -508,6 +506,9 @@ int PlayAAC(int id)
 
 		PCFSetGlyphCacheStartAddress((void*)cursorRAM);
 		PCFCachePlayTimeGlyphs(12);
+	} else {
+		LCD_FUNC.putChar = C_PCFPutChar;
+		LCD_FUNC.putWideChar = C_PCFPutChar;
 	}
 
 	// time elapsed
@@ -940,10 +941,8 @@ END_AAC:
 	/* close files */
 	my_fclose(infile);
 
-	if(pcf_font.isOK){
-		LCD_FUNC.putChar = putCharTmp;
-		LCD_FUNC.putWideChar = putWideCharTmp;
-	}
+	LCD_FUNC.putChar = putCharTmp;
+	LCD_FUNC.putWideChar = putWideCharTmp;
 
 	TOUCH_PINIRQ_ENABLE;
 	TouchPenIRQ_Enable();

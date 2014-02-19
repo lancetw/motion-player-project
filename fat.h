@@ -57,16 +57,24 @@
 //#define BS_VolLab           71
 //#define BS_FilSysType       82
 
+#define DIR_ENTRY_SIZE   32
+
 
 //Attributes
 #define ATTRIBUTES     11
 
-#define ATTR_ARCHIVER  5
-#define ATTR_DIRECTORY 4
-#define ATTR_VOLUME    3
-#define ATTR_HIDDEN    2
-#define ATTR_SYSTEM    1
-#define ATTR_READONLY  0
+#define ATTR_READONLY  0x01
+#define ATTR_HIDDEN    0x02
+#define ATTR_SYSTEM    0x04
+#define ATTR_VOLUME    0x08
+#define ATTR_DIRECTORY 0x10
+#define ATTR_ARCHIVER  0x20
+#define ATTR_LFN       0x0F
+
+// NT Reserved
+#define NT_Reserved    12
+#define NT_U2L_NAME    0x08
+#define NT_U2L_EXT     0x10
 
 //Entry info
 #define ENTRY_EMPTY    0x00
@@ -88,6 +96,9 @@
 #define LFN_NAME_2ND     14
 #define LFN_NAME_3RD     28
 
+#define LFN_END          0x40
+#define LFN_DELETED      0x80
+
 #define LFN_WITHOUT_EXTENSION  0
 #define LFN_WITH_EXTENSION     1
 
@@ -102,6 +113,12 @@
 #define FS_ERROR_TYPE        1
 #define FS_ERROR_CLUSTER_SIZE   2
 #define FS_ERROR_BYTES_PER_CLUSTER 3
+
+
+#define MAKE_BUF_NUM_SIZE 2048
+#define MAKE_BUF_NUM_SECTOR (MAKE_BUF_NUM_SIZE / 512)
+#define NUM_ENTRY_IN_BUF (MAKE_BUF_NUM_SIZE / 32)
+#define MAX_ENTRY_COUNT (65536 / NUM_ENTRY_IN_BUF - 1)//100
 
 extern const uint8_t partition_system_id[];
 
@@ -185,10 +202,19 @@ typedef struct __attribute__ ((packed)) {
     uint8_t    sig[2];                 /* 0x55, 0xaa */
 }BiosParameterBlockFAT32_structTypedef;
 
+
+typedef struct {
+	uint32_t lastDirCluster, lastDirEntry;
+	uint16_t n;
+	uint8_t set;
+}fat_cache_typedef;
+
 volatile struct {
+	fat_cache_typedef cache;
 	uint32_t reservedSectors, \
 	         fatTable, \
 	         userDataSector, \
+	         currentDirCluster, \
 	         currentDirEntry, \
 	         biosParameterBlock, \
 	         rootDirEntry;
@@ -200,7 +226,6 @@ volatile struct {
 	uint8_t fsType, \
 			clusterDenomShift, \
 			currentDirName[54];
-
 } fat;
 
 typedef struct frag_cluster{
@@ -213,9 +238,9 @@ typedef struct fat_cache {
 } fat_cache;
 
 typedef struct {
-	int str_size, len;
-	uint8_t *str;
-}fileNameStruct_TypeDef;
+	uint8_t str_size, len;
+	uint8_t str[54];
+} fileNameStruct_TypeDef;
 
 
 typedef volatile struct MY_FILE {

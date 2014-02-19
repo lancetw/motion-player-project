@@ -19,7 +19,7 @@ void* mpool_alloc(uint32_t sizeofmemory){
 	current_seek = mpool_struct.mem_seek;
 	mpool_struct.mem_seek += sizeofmemory;
 
-	return (void *)&mempool[current_seek];
+	return (void*)(mempool + current_seek);
 }
 
 void mpool_destroy(){
@@ -27,16 +27,15 @@ void mpool_destroy(){
 
 void* jmemread(MY_FILE *fp, size_t *nbytes, int32_t n)
 {
-	void *ret_buf;
-
-	if(n == 0){
+	if(n <= 0){
 		*nbytes = 0;
 		return 0;
 	}
 
+	void *ret_buf;
+
 	if(fp->fileSize < (fp->seekBytes + n)){
 		n = fp->fileSize - fp->seekBytes;
-		if(n <= 0) return 0;
 	}
 
 	ret_buf = (void*)((char*)CCM_BASE + fp->seekBytes);

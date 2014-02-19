@@ -461,6 +461,7 @@ int PlayMP3(int id)
 
 	id3_nameTag_struct_typedef title, album, artist;
 	_id3_title = &title, _id3_album = &album, _id3_artist = &artist;
+	uint16_t xTag = 110, yTag = 67, disp_limit = 300, strLen = 0, yPos;
 
 	MY_FILE *infile = '\0', file_artwork;
 
@@ -474,13 +475,25 @@ int PlayMP3(int id)
 	music_src_p.drawBuff = drawBuff;
 	music_src_p.fp = infile;
 
+	putCharTmp = LCD_FUNC.putChar;
+	putWideCharTmp = LCD_FUNC.putWideChar;
+
+	if(!pcf_font.c_loaded){
+		LCD_FUNC.putChar = PCFPutChar16px;
+		LCD_FUNC.putWideChar = PCFPutChar16px;
+	} else {
+		LCD_FUNC.putChar = C_PCFPutChar16px;
+		LCD_FUNC.putWideChar = C_PCFPutChar16px;
+	}
+	disp_limit = 288;
 
 	LCDPutBgImgMusic();
 
 	infile = my_fopen(id);
 	if(infile == '\0'){
 		LCDStatusStruct.waitExitKey = 0;
-		return -1;
+		ret = -1;
+		goto EXIT_PROCESS;
 	}
 
 	MP3FrameInfo mp3FrameInfo;
@@ -489,9 +502,9 @@ int PlayMP3(int id)
 	memset(&mp3FrameInfo, '\0', sizeof(mp3FrameInfo));
 
 	if ( (hMP3Decoder = MP3InitDecoder()) == 0 ){
-		my_fclose(infile);
 		LCDStatusStruct.waitExitKey = 0;
-		return -1;
+		ret = -1;
+		goto EXIT_PROCESS;
 	}
 
 
@@ -515,36 +528,25 @@ int PlayMP3(int id)
 	}
 	*/
 
-	uint16_t xTag = 110, yTag = 67, disp_limit = 300, strLen = 0, yPos;
 	if(!_id3_album->str_p[0] && !_id3_artist->str_p[0]){
 		yTag += 20;
 	} else if(!_id3_album->str_p[0] || !_id3_artist->str_p[0]){
 		yTag += 10;
 	}
 
-	if(pcf_font.isOK){
-		putCharTmp = LCD_FUNC.putChar;
-		putWideCharTmp = LCD_FUNC.putWideChar;
-
-		LCD_FUNC.putChar = PCFPutChar16px;
-		LCD_FUNC.putWideChar = PCFPutChar16px;
-		disp_limit = 288;
-	}
 
 	if(_id3_title->str_p[0] != 0){
-		if(pcf_font.isOK){
-			strLen = MP3GetStringPixelLength(_id3_title, 16);
-			if((xTag + strLen) < LCD_WIDTH){
-				disp_limit = LCD_WIDTH - 1;
-			} else {
-				disp_limit = LCD_WIDTH - 20;
-				yTag -= 8;
-			}
+		strLen = MP3GetStringPixelLength(_id3_title, 16);
+		if((xTag + strLen) < LCD_WIDTH){
+			disp_limit = LCD_WIDTH - 1;
+		} else {
+			disp_limit = LCD_WIDTH - 20;
+			yTag -= 8;
+		}
 
-			strLen = MP3GetStringPixelLength(_id3_album, 12);
-			if((xTag + strLen) > (LCD_WIDTH - 20)){
-				yTag -= 6;
-			}
+		strLen = MP3GetStringPixelLength(_id3_album, 12);
+		if((xTag + strLen) > (LCD_WIDTH - 20)){
+			yTag -= 6;
 		}
 		LCDGotoXY(xTag + 1, yTag + 1);
 		MP3PutString(xTag + 1, disp_limit, 2, _id3_title, BLACK);
@@ -554,14 +556,12 @@ int PlayMP3(int id)
 	} else {
 		uint8_t strNameLFN[80];
 		if(setLFNname(strNameLFN, id, LFN_WITHOUT_EXTENSION, sizeof(strNameLFN))){
-			if(pcf_font.isOK){
-				strLen = LCDGetStringLFNPixelLength(strNameLFN, 16);
-				if((xTag + strLen) < LCD_WIDTH){
-					disp_limit = LCD_WIDTH - 1;
-				} else {
-					disp_limit = LCD_WIDTH - 20;
-					yTag -= 10;
-				}
+			strLen = LCDGetStringLFNPixelLength(strNameLFN, 16);
+			if((xTag + strLen) < LCD_WIDTH){
+				disp_limit = LCD_WIDTH - 1;
+			} else {
+				disp_limit = LCD_WIDTH - 20;
+				yTag -= 10;
 			}
 			LCDGotoXY(xTag + 1, yTag + 1);
 			LCDPutStringLFN(xTag + 1, disp_limit, 2, strNameLFN, BLACK);
@@ -579,11 +579,9 @@ int PlayMP3(int id)
 		yTag += 20;
 	}
 
-	if(pcf_font.isOK){
-		LCD_FUNC.putChar = putCharTmp;
-		LCD_FUNC.putWideChar = putWideCharTmp;
-		disp_limit = 300;
-	}
+	LCD_FUNC.putChar = putCharTmp;
+	LCD_FUNC.putWideChar = putWideCharTmp;
+	disp_limit = 300;
 
 	if(_id3_album->str_p[0] != 0){
 		LCDGotoXY(xTag + 1, yTag + 1);
@@ -710,7 +708,7 @@ int PlayMP3(int id)
 	}
 
 	char s[20];
-	sprintf(s, "%d/%d", id, fat.fileCnt - 1);
+	SPRINTF(s, "%d/%d", id, fat.fileCnt - 1);
 	LCDGotoXY(21, MUSIC_INFO_POS_Y + 1);
 	LCDPutString(s, BLACK);
 	LCDGotoXY(20, MUSIC_INFO_POS_Y);
@@ -727,23 +725,23 @@ int PlayMP3(int id)
 		LCDGotoXY(110, MUSIC_INFO_POS_Y);
 		LCDPutString(mp3FrameInfo.nChans == 2 ? "Stereo" : "Mono", WHITE);
 
-		sprintf(s, "%dkbps", mp3FrameInfo.bitrate / 1000);
+		SPRINTF(s, "%dkbps", mp3FrameInfo.bitrate / 1000);
 		LCDGotoXY(171, MUSIC_INFO_POS_Y + 1);
 		LCDPutString(s, BLACK);
 		LCDGotoXY(170, MUSIC_INFO_POS_Y);
 		LCDPutString(s, WHITE);
 
-		sprintf(s, "%dHz", mp3FrameInfo.samprate);
+		SPRINTF(s, "%dHz", mp3FrameInfo.samprate);
 		LCDGotoXY(241, MUSIC_INFO_POS_Y + 1);
 		LCDPutString(s, BLACK);
 		LCDGotoXY(240, MUSIC_INFO_POS_Y);
 		LCDPutString(s, WHITE);
 	}
 
-	if(pcf_font.isOK){ // Cache Play Time Glyphs
-		putCharTmp = LCD_FUNC.putChar;
-		putWideCharTmp = LCD_FUNC.putWideChar;
+	putCharTmp = LCD_FUNC.putChar;
+	putWideCharTmp = LCD_FUNC.putWideChar;
 
+	if(!pcf_font.c_loaded){
 		LCD_FUNC.putChar = PCFPutCharCache;
 		LCD_FUNC.putWideChar = PCFPutCharCache;
 
@@ -751,6 +749,9 @@ int PlayMP3(int id)
 
 		PCFSetGlyphCacheStartAddress((void*)cursorRAM);
 		PCFCachePlayTimeGlyphs(12);
+	} else {
+		LCD_FUNC.putChar = C_PCFPutChar;
+		LCD_FUNC.putWideChar = C_PCFPutChar;
 	}
 
 	debug.printf("\r\n%d:%02d", minute, sec);
@@ -1168,6 +1169,9 @@ SKIP_SEEK:
 	}
 
 END_MP3:
+	MP3FreeDecoder(hMP3Decoder);
+
+EXIT_PROCESS:
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
 	DMA_Cmd(DMA1_Stream1, DISABLE);
 	AUDIO_OUT_SHUTDOWN;
@@ -1177,15 +1181,11 @@ END_MP3:
 	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	MP3FreeDecoder(hMP3Decoder);
-
 	my_fclose(infile);
 	LCDStatusStruct.waitExitKey = 0;
 
-	if(pcf_font.isOK){
-		LCD_FUNC.putChar = putCharTmp;
-		LCD_FUNC.putWideChar = putWideCharTmp;
-	}
+	LCD_FUNC.putChar = putCharTmp;
+	LCD_FUNC.putWideChar = putWideCharTmp;
 
 	TOUCH_PINIRQ_ENABLE;
 	TouchPenIRQ_Enable();

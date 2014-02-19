@@ -5,13 +5,14 @@
  *      Author: Tonsuke
  */
 
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 #include "fat.h"
 #include "sd.h"
 #include "lcd.h"
 #include "usart.h"
 #include "mjpeg.h"
-#include <stdlib.h>
-#include <string.h>
 
 #include "settings.h"
 
@@ -106,7 +107,7 @@ int initFat()
 
 size_t getNClusterCache(MY_FILE *fp, size_t count, size_t cluster)
 {
-	if(fp->cache.fragCnt == 0){ // no fragmentation
+	if((fp->cache.fragCnt <= 0) || (count <= 0)){ // no fragmentation or no need to calculate cluster
 		return (cluster + count);
 	}
 
@@ -114,7 +115,7 @@ size_t getNClusterCache(MY_FILE *fp, size_t count, size_t cluster)
 	uint32_t avail, lastClusterGap = fp->clusterOrg;
 
 	for(i = 0;i < (fp->cache.fragCnt - 1);i++){ // search which cache contains cluster
-		if(lastClusterGap <= cluster && cluster <= fp->cache.p_cluster_gap[i].pre){
+		if((lastClusterGap <= cluster) && (cluster <= fp->cache.p_cluster_gap[i].pre)){
 			break;
 		}
 		lastClusterGap = fp->cache.p_cluster_gap[i].post;
@@ -172,7 +173,7 @@ int setExtensionName(char *name, int id){
 	uint16_t entryPointOffset;
 	entryPointOffset = getListEntryPoint(id);
 
-	if(!(fbuf[entryPointOffset + ATTRIBUTES] & _BV(ATTR_DIRECTORY))){
+	if(!(fbuf[entryPointOffset + ATTRIBUTES] & ATTR_DIRECTORY)){
 		if(fbuf[entryPointOffset + 8] != 0x20){
 			strncpy(name, (char*)&fbuf[entryPointOffset + 8], 3);
 		} else {
@@ -187,7 +188,7 @@ int setExtensionName(char *name, int id){
 
 uint8_t setLFNname(uint8_t *pLFNname, uint16_t id, uint8_t extension, uint8_t numBytes)
 {
-	uint8_t LFNnameLen = 0, LFNseq = 0, i = 0;
+	uint8_t LFNnameLen = 0, LFNseq = 0, i = 0, *pDirEntry;
 	uint16_t LFNentryPointOffset;
 
 	numBytes -= numBytes % 26;
@@ -195,24 +196,28 @@ uint8_t setLFNname(uint8_t *pLFNname, uint16_t id, uint8_t extension, uint8_t nu
 	LFNentryPointOffset = getListEntryPoint(id); // リスト上にあるIDファイルエントリの先頭位置をセット
 
 	do{
-		if(LFNentryPointOffset == 0){
+		if(LFNentryPointOffset <= 0){
 			SDBlockRead((uint8_t*)fbuf, ((*(fat.pfileList + id) / 16) + fat.currentDirEntry - ++i));	// リストのエントリ位置のセクタを読み込む
 			LFNentryPointOffset = 512;
 		}
 		LFNentryPointOffset -= 32;
 
-		if (fbuf[LFNentryPointOffset + ATTRIBUTES] != 0x0F || \
-		   (fbuf[LFNentryPointOffset + LFN_SEQ_NUMBER] & 0x1F) != ++LFNseq || \
-		   (fbuf[LFNentryPointOffset + LFN_SEQ_NUMBER] & _BV(7)) ){
+		pDirEntry = (uint8_t*)&fbuf[LFNentryPointOffset];
+
+		if( (pDirEntry[ATTRIBUTES] != ATTR_LFN) || \
+		    ((pDirEntry[LFN_SEQ_NUMBER] & 0x1F) != ++LFNseq) || \
+		    (pDirEntry[LFN_SEQ_NUMBER] & LFN_DELETED) ){
 			return 0;
 		}
 
-		memcpy((void*)(pLFNname + LFNnameLen), (const void*)&fbuf[LFNentryPointOffset + LFN_NAME_1ST], 10);
-		memcpy((void*)(pLFNname + LFNnameLen + 10), (const void*)&fbuf[LFNentryPointOffset + LFN_NAME_2ND], 12);
-		memcpy((void*)(pLFNname + LFNnameLen + 22), (const void*)&fbuf[LFNentryPointOffset + LFN_NAME_3RD], 4);
+		memcpy((void*)(pLFNname + LFNnameLen), (const void*)&pDirEntry[LFN_NAME_1ST], 10);
+		memcpy((void*)(pLFNname + LFNnameLen + 10), (const void*)&pDirEntry[LFN_NAME_2ND], 12);
+		memcpy((void*)(pLFNname + LFNnameLen + 22), (const void*)&pDirEntry[LFN_NAME_3RD], 4);
 
-		if((LFNnameLen += 26) >= numBytes) break;
-	} while( !(fbuf[LFNentryPointOffset + LFN_SEQ_NUMBER] & _BV(6)) );
+		if((LFNnameLen += 26) >= numBytes){
+			break;
+		}
+	} while( !(pDirEntry[LFN_SEQ_NUMBER] & LFN_END) );
 
 	if(!extension){
 		i = LFNnameLen;
@@ -233,52 +238,64 @@ uint8_t setLFNname(uint8_t *pLFNname, uint16_t id, uint8_t extension, uint8_t nu
 
 void makeFileList()
 {
-#define MAKE_BUF_NUM_SIZE 4096
-#define MAKE_BUF_NUM_SECTOR (MAKE_BUF_NUM_SIZE / 512)
-#define NUM_ENTRY_IN_BUF (MAKE_BUF_NUM_SIZE / 32)
-#define MAX_ENTRY_COUNT 100
+	volatile int i, j, k, loop_brake, entryIdx;
+	volatile uint32_t nextCluster, currentDirEntry;
+	uint16_t *pfileList;
+	uint8_t buf[MAKE_BUF_NUM_SIZE], *pDirEntry;
 
-	int i, j, k, loop_brake = 0, entryIdx = 0;
-	uint16_t *p = fat.pfileList;
-	uint8_t buf[MAKE_BUF_NUM_SIZE];
+	fat.cache.set = 0;
+	fat.cache.n = 0;
 
 	fat.fileCnt = 0;
 	if(fat.currentDirEntry == fat.rootDirEntry){ // exception for settings item
 		fat.fileCnt++;
 	}
+
 	for(i = 0;i < 2;i++){	// ループ一回目はファイルの個数を数える。二回目でファイルの個数分メモリを確保し、各ファイルのエントリ位置を記録する。
 		if(i != 0){
 			fat.pfileList = (uint16_t*)malloc(fat.fileCnt * sizeof(uint16_t));
-			p = fat.pfileList;
+			if(fat.pfileList == NULL){
+				debug.printf("\r\nmalloc error");
+				while(1);
+			}
+
+			pfileList = fat.pfileList;
 			if(fat.currentDirEntry == fat.rootDirEntry){ // exception for settings item
-				*p++ = 0xffff;
+				*pfileList++ = 0xffff;
 			}
 		}
 
+		entryIdx = 0;
+		loop_brake = 0;
+		nextCluster = fat.currentDirCluster;
+		currentDirEntry = fat.currentDirEntry;
+
 		for(k = 0;k < MAX_ENTRY_COUNT;k++){ // MAX_SEARCH_ENTRY = MAX_ENTRY_COUNT * NUM_ENTRY_IN_BUF
-			SDMultiBlockRead((uint8_t*)buf, (fat.currentDirEntry + k * MAKE_BUF_NUM_SECTOR), MAKE_BUF_NUM_SECTOR);
-			for(j = 0;j < MAKE_BUF_NUM_SIZE;j += 32){
-				if(i != 0){
-					entryIdx++;	// エントリインデックスを+1
-				}
-				if((buf[j + ATTRIBUTES] & (_BV(ATTR_VOLUME) | _BV(ATTR_HIDDEN) | _BV(ATTR_SYSTEM)) ) != 0){ // ボリューム属性、隠し属性、システム属性はリストに加えない。
-					continue;
-				}
-				if((i == 0) && (buf[j] == ENTRY_EMPTY)){ // 空きエントリだったらカウント終了
+			if((k > 0) && (((k * MAKE_BUF_NUM_SECTOR) % fat.sectorsPerCluster) == 0)){
+				nextCluster = getCluster(fat.bytesPerCluster, nextCluster);
+				currentDirEntry = (uint32_t)(nextCluster - 2) * fat.sectorsPerCluster + fat.userDataSector; // カレントディレクトリエントリを更新
+			}
+			SDMultiBlockRead((uint8_t*)buf, (currentDirEntry + (k * MAKE_BUF_NUM_SECTOR) % fat.sectorsPerCluster), MAKE_BUF_NUM_SECTOR);
+			for(j = 0;j < MAKE_BUF_NUM_SIZE;j += 32, entryIdx++){
+				pDirEntry = &buf[j];
+				if(pDirEntry[0] == ENTRY_EMPTY){ // 空きエントリだったらカウント終了
 					loop_brake = 1;
 					break;
 				}
-				if((buf[j] == ENTRY_DELETED) || (buf[j] == ENTRY_DELETEDB) || \
-				   ((j == 0 && k == 0) && fat.currentDirEntry != fat.rootDirEntry)){
+				if((pDirEntry[0] == ENTRY_DELETED) || (pDirEntry[0] == ENTRY_DELETEDB) || \
+				   ( (j == 0 && k == 0) && (currentDirEntry != fat.rootDirEntry) )){
 					continue; //削除済みエントリ、カレントディレクトリ(エントリ先頭)は無視する
 				}
-				if(i != 0){
-					*p++ = entryIdx - 1;	// 現在ファイルのエントリ位置を記録
-				} else {
+				if((pDirEntry[ATTRIBUTES] & (ATTR_VOLUME | ATTR_HIDDEN | ATTR_SYSTEM) )){ // ボリューム属性、隠し属性、システム属性はリストに加えない。
+					continue;
+				}
+				if(i == 0){
 					fat.fileCnt++;
+				} else {
+					*pfileList++ = entryIdx;	// 現在ファイルのエントリ位置を記録
 				}
 			}
-			if((i == 0) && loop_brake){
+			if(loop_brake){
 				break;
 			}
 		}
@@ -354,17 +371,40 @@ uint16_t getListEntryPointByName(const char *fileName)
 
 int getListEntryPoint(int id)
 {
-	SDBlockRead((uint8_t*)fbuf, ((*(fat.pfileList + id) / 16) + fat.currentDirEntry));	// リストのエントリ位置のセクタを読み込む
-	return ( (*(fat.pfileList + id) % 16) * 32 ); // リストのファイルエントリの先頭位置を返す
+	int i, n;
+	uint32_t nextCluster, currentDirEntry;
+	uint16_t entryIdx;
+
+	nextCluster = fat.currentDirCluster;
+	currentDirEntry = fat.currentDirEntry;
+
+	entryIdx = *(fat.pfileList + id);
+
+	n = entryIdx / (fat.sectorsPerCluster * (512 / DIR_ENTRY_SIZE));
+	entryIdx = entryIdx % (fat.sectorsPerCluster * (512 / DIR_ENTRY_SIZE));
+
+	if(fat.cache.n == n && fat.cache.set){
+		nextCluster = fat.cache.lastDirCluster;
+		currentDirEntry = fat.cache.lastDirEntry;
+	} else {
+		for(i = 0;i < n;i++){
+			nextCluster = getCluster(fat.bytesPerCluster, nextCluster);
+			currentDirEntry = (uint32_t)(nextCluster - 2) * fat.sectorsPerCluster + fat.userDataSector; // カレントディレクトリエントリを更新
+
+			fat.cache.n = n;
+			fat.cache.lastDirCluster = nextCluster;
+			fat.cache.lastDirEntry = currentDirEntry;
+			fat.cache.set = 1;
+		}
+	}
+
+	SDBlockRead((uint8_t*)fbuf, ((entryIdx / (512 / DIR_ENTRY_SIZE)) + currentDirEntry));	// リストのエントリ位置のセクタを読み込む
+	return ( (entryIdx % (512 / DIR_ENTRY_SIZE)) * DIR_ENTRY_SIZE ); // リストのファイルエントリの先頭位置を返す
 }
 
 int strcmp_filename(fileNameStruct_TypeDef *str0, fileNameStruct_TypeDef *str1)
 {
-	int i, cmp;
-
-	int len0 = str0->len, \
-		len1 = str1->len, \
-		n = len0 <= len1 ? len0 : len1;
+	int i, cmp, n = str0->len <= str1->len ? str0->len : str1->len;
 
 	for(i = 0;i < n;i++){
 		cmp =   str0->str_size <= sizeof(uint8_t) ? *((uint8_t*)&(str0->str)[i]) : *((uint16_t*)&(str0->str)[i * 2]);
@@ -376,65 +416,79 @@ int strcmp_filename(fileNameStruct_TypeDef *str0, fileNameStruct_TypeDef *str1)
 		}
 	}
 
-	if(n == len0){
+	if(n == str0->len){
 		return -1;
-	} else if(n == len1){
+	} else if(n == str1->len){
 		return 1;
 	}
 
 	return 0;
 }
 
+fileNameStruct_TypeDef* setFileName(fileNameStruct_TypeDef *fileNameStr, int id)
+{
+	uint16_t entryPointOffset, *p16;
+
+	if(!setLFNname((uint8_t*)fileNameStr->str, id, LFN_WITHOUT_EXTENSION, sizeof(fileNameStr->str))){ // SFN
+		entryPointOffset = getListEntryPoint(id);
+		strncpy(fileNameStr->str, (char*)&fbuf[entryPointOffset], 8);
+		strtok(fileNameStr->str, " ");
+		fileNameStr->str_size = sizeof(uint8_t);
+		fileNameStr->len = strlen(fileNameStr->str);
+	} else { // LFN
+		fileNameStr->str_size = sizeof(uint16_t);
+		p16 = (uint16_t*)fileNameStr->str;
+		fileNameStr->len = 0;
+		while(*p16++ != 0x0000 || fileNameStr->len <= sizeof(fileNameStr->str)){
+			fileNameStr->len++;
+		}
+	}
+
+	return fileNameStr;
+}
+/*
+void quickSort(int left, int right)
+{
+    if(left >= right) return;
+
+	int l = left, r = right;
+	uint16_t tmp;
+	fileNameStruct_TypeDef pivot_s, s;
+
+	setFileName(&pivot_s, (left + right) / 2);
+
+	while(1){
+        while (strcmp_filename(setFileName(&s, l), &pivot_s) < 0) l++;
+        while (strcmp_filename(setFileName(&s, r), &pivot_s) > 0) r--;
+
+        if (l > r) break;
+
+		tmp = fat.pfileList[l];
+		fat.pfileList[l] = fat.pfileList[r];
+		fat.pfileList[r] = tmp;
+
+        l++, r--;
+	}
+    quickSort(left, r);
+    quickSort(l, right);
+}
+*/
 void sortListEntryPointSpecifiedArea(int idx, int count)
 {
-	uint32_t i, j;
-	uint16_t entryPointOffset, temp, *p16;
-	char str0[54], str1[54];
+	if(!settings_group.filer_conf.sort){
+		return;
+	}
 
-	fileNameStruct_TypeDef fileNameStr0, fileNameStr1;
-	fileNameStr0.str = (uint8_t*)str0;
-	fileNameStr1.str = (uint8_t*)str1;
+	int i, j;
+	uint16_t tmp;
+	fileNameStruct_TypeDef s0, s1;
 
-	count += idx;
-
-	for(i = count - 1;i > idx;i--){
+	for(i = idx + count - 1;i > idx;i--){
 		for(j = idx;j < i;j++){
-			str0[0] = str1[0] = '\0';
-
-			if(!setLFNname((uint8_t*)str0, j, LFN_WITHOUT_EXTENSION, sizeof(str0))){ // SFN
-				entryPointOffset = getListEntryPoint(j);
-				strncpy(str0, (char*)&fbuf[entryPointOffset], 8);
-				strtok(str0, " ");
-				fileNameStr0.str_size = sizeof(uint8_t);
-				fileNameStr0.len = strlen(str0);
-			} else { // LFN
-				fileNameStr0.str_size = sizeof(uint16_t);
-				p16 = (uint16_t*)str0;
-				fileNameStr0.len = 0;
-				while(*p16++ != 0x0000 || fileNameStr0.len <= 54){
-					fileNameStr0.len++;
-				}
-			}
-
-			if(!setLFNname((uint8_t*)str1, j + 1, LFN_WITHOUT_EXTENSION, sizeof(str1))){ // SFN
-				entryPointOffset = getListEntryPoint(j + 1);
-				strncpy(str1, (char*)&fbuf[entryPointOffset], 8);
-				strtok(str1, " ");
-				fileNameStr1.str_size = sizeof(uint8_t);
-				fileNameStr1.len = strlen(str1);
-			} else { // LFN
-				fileNameStr1.str_size = sizeof(uint16_t);
-				p16 = (uint16_t*)str1;
-				fileNameStr1.len = 0;
-				while(*p16++ != 0x0000 || fileNameStr1.len <= 54){
-					fileNameStr1.len++;
-				}
-			}
-
-			if(strcmp_filename(&fileNameStr0, &fileNameStr1) > 0){
-				temp = fat.pfileList[j];
+			if(strcmp_filename(setFileName(&s0, j), setFileName(&s1, j + 1)) > 0){
+				tmp = fat.pfileList[j];
 				fat.pfileList[j] = fat.pfileList[j + 1];
-				fat.pfileList[j + 1] = temp;
+				fat.pfileList[j + 1] = tmp;
 			}
 		}
 	}
@@ -453,7 +507,7 @@ void sortListEntryPoint()
 			continue;
 		}
 		entryPointOffset = getListEntryPoint(i);
-		if(fbuf[entryPointOffset + ATTRIBUTES] & _BV(ATTR_DIRECTORY)){
+		if(fbuf[entryPointOffset + ATTRIBUTES] & ATTR_DIRECTORY){
 			directries++;
 		}else{
 			archives++;
@@ -467,7 +521,7 @@ void sortListEntryPoint()
 			continue;
 		}
 		entryPointOffset = getListEntryPoint(i);
-		if(fbuf[entryPointOffset + ATTRIBUTES] & _BV(ATTR_DIRECTORY)){
+		if(fbuf[entryPointOffset + ATTRIBUTES] & ATTR_DIRECTORY){
 			temp = fat.pfileList[idx_dir];
 			fat.pfileList[idx_dir] = fat.pfileList[i];
 			fat.pfileList[i] = temp;
@@ -487,21 +541,17 @@ void sortListEntryPoint()
 		return; // no need to sort archives
 	}
 
-	if(!settings_group.filer_conf.sort){
-		return;
-	}
-
 	struct struct_ext_item{ // for extension arrangement
 		uint16_t id;
-		char name[4];
+		char name[3];
 		struct struct_ext_item *next;
-	};
+	} __attribute__ ((packed));
+
 	struct struct_ext_item start_ext_item, *ptr_ext_item, *temp1_ext_item, *temp2_ext_item, *new_ptr_ext_item;
 	int ext_item_list_len = 0;
 
 	ptr_ext_item = &start_ext_item;
 	ptr_ext_item->next = NULL;
-	ptr_ext_item = &start_ext_item;
 
 	for(i = directries;i < fat.fileCnt;i++){ // make extension item list by extension names
 		fileExtStr[0] = '\0';
@@ -509,7 +559,7 @@ void sortListEntryPoint()
 		if(fbuf[entryPointOffset + 8] != 0x20){
 			strncpy(fileExtStr, (char*)&fbuf[entryPointOffset + 8], 3);
 		} else {
-			strcpy(fileExtStr, "---");
+			strncpy(fileExtStr, "---", 3);
 		}
 
 		// make item list by extension name
@@ -529,7 +579,7 @@ void sortListEntryPoint()
 			if(j++ >= i){
 				break;
 			}
-			if(strcmp(ptr_ext_item->next->name, ptr_ext_item->next->next->name) > 0){
+			if(strncmp(ptr_ext_item->next->name, ptr_ext_item->next->next->name, 3) > 0){
 				temp2_ext_item = ptr_ext_item->next->next->next;
 				temp1_ext_item = ptr_ext_item->next;
 				ptr_ext_item->next = ptr_ext_item->next->next;
@@ -559,7 +609,8 @@ void sortListEntryPoint()
 	}
 	sortListEntryPointSpecifiedArea(nameGap, nameCnt);
 
-	// delete list
+
+DELETE_LIST:
 	ptr_ext_item = start_ext_item.next;
 	do{
 		temp1_ext_item = ptr_ext_item->next;
@@ -583,7 +634,7 @@ MY_FILE* my_fopen(int id)
 	}
 
 	entryPointOffset = getListEntryPoint(id);
-	if(fbuf[entryPointOffset + ATTRIBUTES] & _BV(ATTR_DIRECTORY)){
+	if(fbuf[entryPointOffset + ATTRIBUTES] & ATTR_DIRECTORY){
 		return '\0';
 	}
 
@@ -712,6 +763,10 @@ int my_fseek(MY_FILE *fp, int64_t offset, int whence)
 			break;
 		case SEEK_CUR:
 			fp->seekBytes += offset;
+			if(offset < 0){
+				fp->cluster = fp->clusterOrg;
+				fp->clusterCnt = 0;
+			}
 			break;
 		case SEEK_END:
 			fp->seekBytes = fp->fileSize + offset - 1;
@@ -724,7 +779,7 @@ int my_fseek(MY_FILE *fp, int64_t offset, int whence)
 	fp->seekSector = (fp->seekBytes >> 9) & (fat.sectorsPerCluster - 1);
 	seekCluster = fp->seekBytes >> fat.clusterDenomShift;
 
-	if(seekCluster > fp->clusterCnt){
+	if(seekCluster >= fp->clusterCnt){
 		fp->cluster = fat_func.getNCluster(fp, seekCluster - fp->clusterCnt, fp->cluster);
 		fp->clusterCnt = seekCluster;
 		fp->dataSector = (uint32_t)(fp->cluster - 2) * fat.sectorsPerCluster + fat.userDataSector;
@@ -879,24 +934,29 @@ void changeDir(int id)
 			if(fileName[i] == '\0'){
 				break;
 			}
+			if(fbuf[entryPointOffset + NT_Reserved] & NT_U2L_NAME){
+				fileName[i] = tolower(fileName[i]);
+			}
 			*((uint16_t*)&fat.currentDirName[i * sizeof(uint16_t)]) = (uint16_t)fileName[i];
 		}
 		*((uint32_t*)&fat.currentDirName[i * sizeof(uint16_t)]) = 0x00000000;
 	}
 
 	entryPointOffset = getListEntryPoint(id); // リスト上にあるIDファイルエントリの先頭位置をセット
-	if(!(fbuf[entryPointOffset + ATTRIBUTES] & _BV(ATTR_DIRECTORY))){
+	if(!(fbuf[entryPointOffset + ATTRIBUTES] & ATTR_DIRECTORY)){
 		return;
 	}
 
 	if(fat.fsType == FS_TYPE_FAT16){
 		nextCluster = *((uint16_t*)&fbuf[entryPointOffset + CLUSTER_FAT16]); // クラスタ番号取得
 	} else {
-		nextCluster  = fbuf[entryPointOffset + CLUSTER_FAT32_LSB]; // フォントのクラスタ番号取得
+		nextCluster  = fbuf[entryPointOffset + CLUSTER_FAT32_LSB]; // クラスタ番号取得
 		nextCluster |= (uint32_t)fbuf[entryPointOffset + CLUSTER_FAT32_LSB + 1] << 8;
 		nextCluster |= (uint32_t)fbuf[entryPointOffset + CLUSTER_FAT32_MSB] << 16;
 		nextCluster |= (uint32_t)fbuf[entryPointOffset + CLUSTER_FAT32_MSB + 1] << 24;
 	}
+
+	fat.currentDirCluster = nextCluster;
 
 	if(nextCluster != 0){
 		fat.currentDirEntry = (uint32_t)(nextCluster - 2) * fat.sectorsPerCluster + fat.userDataSector; // カレントディレクトリエントリを更新

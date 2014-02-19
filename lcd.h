@@ -68,11 +68,14 @@ typedef enum
 
 #define	LCD_RESET 3
 
-volatile struct
+typedef struct
 {
 	void (*putChar)(uint16_t asc, colors color);
 	void (*putWideChar)(uint16_t code, colors color);
-}LCD_FUNC;
+	uint16_t (*getCharLength)(uint16_t code, uint16_t font_width);
+}LCD_FUNC_typedef;
+
+extern LCD_FUNC_typedef LCD_FUNC;
 
 typedef struct{
 	int16_t curTime, prevTime;
@@ -154,6 +157,7 @@ extern void LCDInit(void);
 //inline void LCDPutData(uint16_t data);
 //static uint16_t LCDGetData(void);
 extern void LCDBackLightInit(void);
+extern void LCDBackLightTimerInit(void);
 extern void LCDBackLightDisable(void);
 extern void LCDSetWindowArea(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 extern inline void LCDSetGramAddr(int x, int y);

@@ -2,8 +2,8 @@
  *		STM32F4-Discovery Motion Player Project
  *		by Tonsuke
  *
- *		v1.8
- *		2013/06/12
+ *		v1.11
+ *		2014/02/20
  *
  *		WIKI
  *		http://motionplayer.wiki.fc2.com
@@ -27,14 +27,14 @@
 #include "xpt2046.h"
 #include "icon.h"
 #include "settings.h"
+#include "mpool.h"
 
 #include "usbd_msc_core.h"
 #include "usbd_usr.h"
 #include "usbd_desc.h"
 #include "usb_conf.h"
 
-
-USB_OTG_CORE_HANDLE USB_OTG_dev;
+USB_OTG_CORE_HANDLE *pUSB_OTG_dev;
 volatile int8_t usb_msc_enable = 0, usb_msc_card_accessing = 0, usb_msc_progressbar_enable = 0, photo_frame_flag = 0;
 
 void TIM8_UP_TIM13_IRQHandler(void) // Back Light & Sleep control timer
@@ -65,7 +65,7 @@ void TIM8_UP_TIM13_IRQHandler(void) // Back Light & Sleep control timer
 
 		++time.curTime;
 
-		if(abs(time.curTime - time.prevTime) >= settings_group.disp_conf.time2sleep / 2 && !time.flags.dimLight && time.flags.enable){ // Dim Light
+		if((abs(time.curTime - time.prevTime) >= (settings_group.disp_conf.time2sleep / 2)) && !time.flags.dimLight && time.flags.enable){ // Dim Light
 			TIM_SetCompare2(TIM4, (int)(500 * (float)settings_group.disp_conf.brightness / 100.0f) - 1);
 			time.flags.dimLight = 1;
 		}
@@ -76,6 +76,46 @@ void TIM8_UP_TIM13_IRQHandler(void) // Back Light & Sleep control timer
 	}
 }
 
+void MassStorage()
+{
+	settings_group.disp_conf.time2sleep = 0;
+	TOUCH_PINIRQ_DISABLE;
+	touch.func = touch_empty_func;
+
+	LCDClear(LCD_WIDTH, LCD_HEIGHT, BLACK);
+	LCDPutIcon(75, 95, 22, 22, usb_22x22, usb_22x22_alpha);
+	LCDGotoXY(100, 100);
+	LCDPutString("USB Connect to HOST", WHITE);
+
+	// show circular progress bar animation until file list complete
+	MergeCircularProgressBar(0);
+	LCDSetWindowArea(147, 150, 16, 16);
+	LCDSetGramAddr(147, 150);
+	LCDPutCmd(0x0022);
+	DMA_ProgressBar_Conf();
+
+	SystemInit2(168);
+	SystemCoreClockUpdate();
+	USARTInit();
+
+	USB_OTG_CORE_HANDLE USB_OTG_dev;
+	pUSB_OTG_dev = &USB_OTG_dev;
+
+    USBD_Init(&USB_OTG_dev,
+              USB_OTG_FS_CORE_ID,
+              &USR_desc,
+              &USBD_MSC_cb,
+              &USR_cb);
+
+    while(1){};
+}
+
+void mem_clean(){
+	void *p;
+	p = malloc(sizeof(mempool));
+	memset(p, 0, sizeof(mempool));
+	free(p);
+}
 
 int main(void)
 {
@@ -92,9 +132,21 @@ int main(void)
     NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x00000);
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
+	mem_clean();
+
     SETTINGS_Init();
 
     USARTInit();
+
+    if(C_PCFFontInit((uint32_t)internal_flash_pcf_font, (size_t)_sizeof_internal_flash_pcf_font) != -1){
+    	debug.printf("\r\ninternal flash font loaded.");
+    	LCD_FUNC.putChar = C_PCFPutChar;
+    	LCD_FUNC.putWideChar = C_PCFPutChar;
+    	LCD_FUNC.getCharLength = C_PCFGetCharPixelLength;
+    } else {
+    	debug.printf("\r\ninternal flash font load failed.");
+    }
+
 
 	debug.printf("\r\nMCU_IDCODE:%08x", *(uint32_t*)0xE0042000);
 	uint32_t mcu_revision = *(uint32_t*)0xE0042000 & 0xffff0000;
@@ -159,9 +211,15 @@ int main(void)
 
 	USARTPutString("\r\nStarting...");
 
-	if(PCFFontInit(getIdByName("FONT.PCF")) != -1){
-		LCD_FUNC.putChar = PCFPutChar;
-		LCD_FUNC.putWideChar = PCFPutChar;
+	if(settings_group.filer_conf.fontEnabled){
+		if(PCFFontInit(getIdByName("FONT.PCF")) != -1){
+	    	debug.printf("\r\nexternal font loaded.");
+			LCD_FUNC.putChar = PCFPutChar;
+			LCD_FUNC.putWideChar = PCFPutChar;
+			LCD_FUNC.getCharLength = PCFGetCharPixelLength;
+		} else {
+	    	debug.printf("\r\nexternal font load failed.");
+		}
 	}
 
 	LCDPrintFileList();
@@ -179,33 +237,7 @@ int main(void)
 
     while(1){
     	if(usb_msc_enable){ // Start Mass Storage Mode
-    		settings_group.disp_conf.time2sleep = 0;
-    		TOUCH_PINIRQ_DISABLE;
-    		touch.func = touch_empty_func;
-
-    		LCDClear(LCD_WIDTH, LCD_HEIGHT, BLACK);
-    		LCDPutIcon(75, 95, 22, 22, usb_22x22, usb_22x22_alpha);
-    		LCDGotoXY(100, 100);
-    		LCDPutString("USB Connect to HOST", WHITE);
-
-    		// show circular progress bar animation until file list complete
-    		MergeCircularProgressBar(0);
-    		LCDSetWindowArea(147, 150, 16, 16);
-    		LCDSetGramAddr(147, 150);
-    		LCDPutCmd(0x0022);
-    		DMA_ProgressBar_Conf();
-
-    		SystemInit2(168);
-    		SystemCoreClockUpdate();
-    		USARTInit();
-
-    	    USBD_Init(&USB_OTG_dev,
-    	              USB_OTG_FS_CORE_ID,
-    	              &USR_desc,
-    	              &USBD_MSC_cb,
-    	              &USR_cb);
-
-    	    while(1){};
+    		MassStorage();
     	}
 
     	if(time.flags.stop_mode){ // Enter Stop Mode
@@ -226,6 +258,9 @@ int main(void)
 		case FILE_TYPE_MP3: // MP3
 		case FILE_TYPE_AAC: // AAC
 		case FILE_TYPE_MOV: // Motion Jpeg
+			shuffle_play.play_continuous = 0;
+			shuffle_play.mode_changed = 0;
+			shuffle_play.initial_mode = navigation_loop_mode;
 			do{
 				ret = PlayMusic(LCDStatusStruct.idEntry);
 				debug.printf("\r\nret:%d LCDStatusStruct.idEntry:%d fat.fileCnt:%d navigation_loop.mode:%d", ret, LCDStatusStruct.idEntry, fat.fileCnt, navigation_loop_mode);
@@ -242,6 +277,7 @@ int main(void)
 						continue;
 					case NAV_PLAY_ENTIRE:
 					case NAV_INFINITE_PLAY_ENTIRE:
+					case NAV_SHUFFLE_PLAY:
 						goto PLAY_NEXT;
 					default:
 						break;
@@ -249,10 +285,16 @@ int main(void)
 					break;
 				case RET_PLAY_NEXT: // 次へ
 			PLAY_NEXT:
+			if(shuffle_play.flag_make_rand && shuffle_play.mode_changed && (navigation_loop_mode != NAV_SHUFFLE_PLAY)){
+				if(shuffle_play.initial_mode != NAV_SHUFFLE_PLAY){
+					LCDStatusStruct.idEntry = shuffle_play.pRandIdEntry[LCDStatusStruct.idEntry];
+				}
+				shuffle_play.mode_changed = 0;
+			}
 			prevRet = LCDStatusStruct.idEntry;
 					LCDStatusStruct.waitExitKey = 1;
 					if(++LCDStatusStruct.idEntry >= fat.fileCnt){
-						if(navigation_loop_mode == NAV_INFINITE_PLAY_ENTIRE){
+						if(navigation_loop_mode == NAV_INFINITE_PLAY_ENTIRE || navigation_loop_mode == NAV_SHUFFLE_PLAY){
 							LCDStatusStruct.idEntry = 1;
 							LCDStatusStruct.waitExitKey = 1;
 							continue;
@@ -282,11 +324,13 @@ int main(void)
 				default:
 					break;
 				}
-				if(LCDStatusStruct.idEntry){
-					cursor.pos = LCDStatusStruct.idEntry % PAGE_NUM_ITEMS;
-					cursor.pageIdx = LCDStatusStruct.idEntry / PAGE_NUM_ITEMS;
-				}
 			}while((ret != RET_PLAY_STOP) || LCDStatusStruct.waitExitKey);
+			if(shuffle_play.flag_make_rand && (navigation_loop_mode == NAV_SHUFFLE_PLAY)){
+				LCDStatusStruct.idEntry = shuffle_play.pRandIdEntry[LCDStatusStruct.idEntry];
+			}
+			cursor.pos = LCDStatusStruct.idEntry % PAGE_NUM_ITEMS;
+			cursor.pageIdx = LCDStatusStruct.idEntry / PAGE_NUM_ITEMS;
+
 			MergeCircularProgressBar(1);
 			LCDPrintFileList();
 			touch.click = 0;
@@ -391,8 +435,12 @@ int main(void)
 				break;
 			case FILE_TYPE_PCF: // Display Font
 				if(PCFFontInit(LCDStatusStruct.idEntry) != -1){
+			    	debug.printf("\r\nexternal font loaded.");
 					LCD_FUNC.putChar = PCFPutChar;
 					LCD_FUNC.putWideChar = PCFPutChar;
+					LCD_FUNC.getCharLength = PCFGetCharPixelLength;
+				} else {
+			    	debug.printf("\r\nexternal font load failed.");
 				}
 				LCDPrintFileList();
 				LCDStatusStruct.waitExitKey = 0;

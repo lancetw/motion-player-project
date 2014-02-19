@@ -19,7 +19,7 @@ USB_OTG_DRIVER_PATH = lib/STM32_USB_OTG_Driver
 
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = main.c stm32f4xx_it.c fat.c sd.c dojpeg.c mpool.c lcd.c icon.c pcf_font.c mjpeg.c aac.c mp3.c sound.c fft.c fx.c xpt2046.c settings.c xmodem.c usart.c usb_bsp.c usbd_desc.c usbd_usr.c usbd_storage_msd.c  delay.c \
+SRC = main.c stm32f4xx_it.c fat.c sd.c dojpeg.c mpool.c lcd.c icon.c cfile.c pcf_font.c mjpeg.c aac.c mp3.c sound.c fft.c fx.c xpt2046.c settings.c xmodem.c usart.c usb_bsp.c usbd_desc.c usbd_usr.c usbd_storage_msd.c  delay.c \
 $(JPEG_DIR)/jdapimin.c $(JPEG_DIR)/jerror.c $(JPEG_DIR)/jdatasrc.c $(JPEG_DIR)/wrppm.c $(JPEG_DIR)/jdapistd.c $(JPEG_DIR)/jmemmgr.c \
 $(JPEG_DIR)/jdmarker.c $(JPEG_DIR)/jdinput.c $(JPEG_DIR)/jcomapi.c $(JPEG_DIR)/jdmaster.c $(JPEG_DIR)/jmemnobs.c $(JPEG_DIR)/jutils.c \
 $(JPEG_DIR)/jquant1.c $(JPEG_DIR)/jquant2.c $(JPEG_DIR)/jddctmgr.c $(JPEG_DIR)/jdarith.c $(JPEG_DIR)/jdcoefct.c $(JPEG_DIR)/jdmainct.c \
@@ -70,7 +70,7 @@ CFLAGS = -g$(DEBUG)
 CFLAGS += $(CDEFS) $(CINCS)
 CFLAGS += -O$(OPT)
 #CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
-CFLAGS += -fno-strict-aliasing#-Wall -Wstrict-prototypes
+CFLAGS += #-Wimplicit-function-declaration#-fno-strict-aliasing #-Wall -Wstrict-prototypes
 #CFLAGS += -Wa,-adhlns=$(<:.c=.lst)
 CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 CFLAGS += $(CSTANDARD)

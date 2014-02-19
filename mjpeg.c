@@ -254,8 +254,9 @@ void mjpegTouch(void) // タッチペン割込み処理
 	MY_FILE fp_stsc, fp_stsz, fp_stco, fp_jpeg, fp_frame;
 	uint8_t atombuf[12];
 
-	uint8_t *jpeg_limit_table = (uint8_t*)progress_circular_bar_16x16x12_buff;
-	prepare_range_limit_table2(jpeg_limit_table, &jdinfo);
+	prepare_range_limit_table2((uint8_t*)progress_circular_bar_16x16x12_buff, &jdinfo);
+	build_ycc_rgb_table2((uint8_t*)&progress_circular_bar_16x16x12_buff[1408 / 2], &jdinfo);
+
 
 	if(mjpeg_touch.resynch){
 		goto RESYNCH;
@@ -282,7 +283,7 @@ void mjpegTouch(void) // タッチペン割込み処理
 	if((touch.posX > (_drawBuff->navigation_loop.x - 15) && touch.posX < (_drawBuff->navigation_loop.x + _drawBuff->navigation_loop.width + 15)) && \
 			(touch.posY > (_drawBuff->navigation_loop.y - 10) && touch.posY < (_drawBuff->navigation_loop.y + _drawBuff->navigation_loop.height + 10))){ //
 
-		Update_Navigation_Loop_Icon(navigation_loop_mode = ++navigation_loop_mode % 4);
+		Update_Navigation_Loop_Icon(navigation_loop_mode = ++navigation_loop_mode % 5);
 
 		while(GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_RESET);
 
@@ -639,8 +640,8 @@ int PlayMotionJpeg(int id){
 	const char fps1Hz[] = "|/-\\";
 	char timeStr[20];
 
-	uint8_t *jpeg_limit_table = (uint8_t*)progress_circular_bar_16x16x12_buff;
-	prepare_range_limit_table2(jpeg_limit_table, &jdinfo);
+	prepare_range_limit_table2((uint8_t*)progress_circular_bar_16x16x12_buff, &jdinfo);
+	build_ycc_rgb_table2((uint8_t*)&progress_circular_bar_16x16x12_buff[1408 / 2], &jdinfo);
 
 	drawBuff_typedef drawBuff;
 	_drawBuff = &drawBuff;
@@ -710,6 +711,14 @@ int PlayMotionJpeg(int id){
 	setStrSec(timeStr, (int)((float)media.sound.duration / (float)media.sound.timeScale + 0.5f));
 	debug.printf("\r\ntime:%s", timeStr);
 
+	if(media.video.width > LCD_WIDTH || media.video.height > LCD_HEIGHT){
+		debug.printf("\r\ntoo large video dimension size.");
+		my_fclose(fp);
+		LCDStatusStruct.waitExitKey = 0;
+		TOUCH_PINIRQ_ENABLE;
+		atomHasChild[UDTA] = hasChild;
+		return RET_PLAY_STOP;
+	}
 
 	FUNC_VIDEO_BGIMG;
 	media.video.startPosX = (LCD_WIDTH - media.video.width) / 2 - 1;
@@ -864,7 +873,6 @@ int PlayMotionJpeg(int id){
 	}
 */
 
-
 	/*** MotionJPEG Play Process ***/
 	debug.printf("\r\n\n[Play]\n");
 
@@ -884,15 +892,18 @@ int PlayMotionJpeg(int id){
 	fps = frames = prevFrames = 0;
 	totalSamples = firstChunk = prevChunk = prevSamples = 0;
 
-	if(pcf_font.isOK){ // Cache Play Time Glyphs
-		putCharTmp = LCD_FUNC.putChar;
-		putWideCharTmp = LCD_FUNC.putWideChar;
+	putCharTmp = LCD_FUNC.putChar;
+	putWideCharTmp = LCD_FUNC.putWideChar;
 
+	if(!pcf_font.c_loaded){
 		LCD_FUNC.putChar = PCFPutCharCache;
 		LCD_FUNC.putWideChar = PCFPutCharCache;
 
 		PCFSetGlyphCacheStartAddress((void*)cursorRAM);
 		PCFCachePlayTimeGlyphs(12);
+	} else {
+		LCD_FUNC.putChar = C_PCFPutChar;
+		LCD_FUNC.putWideChar = C_PCFPutChar;
 	}
 
 	if(abs(video_stco.numEntry - sound_stco.numEntry) > 50){ // not interleaved correctly
@@ -900,10 +911,8 @@ int PlayMotionJpeg(int id){
 		debug.printf("\r\nTry command:");
 		debug.printf("\r\nMP4Box -inter 500 this.mov");
 
-		if(pcf_font.isOK){
-			LCD_FUNC.putChar = putCharTmp;
-			LCD_FUNC.putWideChar = putWideCharTmp;
-		}
+		LCD_FUNC.putChar = putCharTmp;
+		LCD_FUNC.putWideChar = putWideCharTmp;
 
 		LCDDrawSquare(0, 0, 320, 13, BLACK);
 		LCDSetWindowArea(0, 0, LCD_WIDTH, LCD_HEIGHT);
@@ -1023,9 +1032,6 @@ int PlayMotionJpeg(int id){
 	case 200000000:
 		limitter = 0.93f;
 		break;
-	case 225000000:
-		limitter = 0.95f;
-		break;
 	case 240000000:
 		limitter = 0.96f;
 		break;
@@ -1033,7 +1039,7 @@ int PlayMotionJpeg(int id){
 		limitter = 0.98f;
 		break;
 	default:
-		limitter = 0.80f;
+		limitter = 0.8f;
 		break;
 	}
 
@@ -1057,7 +1063,7 @@ int PlayMotionJpeg(int id){
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, ENABLE);
 	DMA_Cmd(DMA1_Stream1, ENABLE);
 
-//	uint32_t totalRasters = 0;
+	uint32_t totalRasters = 0;
 
 	while(1){
 		CHUNK_OFFSET_HEAD:
@@ -1099,11 +1105,15 @@ int PlayMotionJpeg(int id){
 
 				DMA_SOUND_IT_ENABLE; // DAC割り込み許可
 				while(!TIM3_SR_UIF_BB){ // while TIM3->SR Update Flag is unset
-					if(jdinfo.output_scanline < jdinfo.output_height && TIM3->CNT < sample_time_limit){ // JPEGラスタ描画
+					if((jdinfo.output_scanline < jdinfo.output_height) && (TIM3->CNT < sample_time_limit)){ // JPEGラスタ描画
 						jpeg_read_scanlines(&jdinfo, dest_mgr->buffer, dest_mgr->buffer_height);
 //						totalRasters++;
 					}
-					if(abs(soundStcoCount - videoStcoCount) > 1 && !soundEndFlag){ //　音ズレ修正
+//					if(jdinfo.output_scanline >= jdinfo.output_height){
+//						totalRasters = TIM3->CNT;
+//						debug.printf("\r\nTR:%d", totalRasters);
+//					}
+					if((abs(soundStcoCount - videoStcoCount) > 1) && !soundEndFlag){ //　音ズレ修正
 						if(soundStcoCount >= (sound_stco.numEntry - 2) || videoStcoCount >= (video_stco.numEntry - 2)){
 							goto END_PROCESS;
 						}
@@ -1112,6 +1122,7 @@ int PlayMotionJpeg(int id){
 						debug.printf("\r\n*synch unmatch at video_stco:%d sound_stco:%d\n", videoStcoCount, soundStcoCount);
 						DMA_SOUND_IT_DISABLE; // DAC割込み不許可
 						mjpegTouch();
+						samples /= prevSamples;
 						mjpeg_touch.resynch = 0;
 						getVideoSampleTime(atombuf, 0); // サンプルタイム初期化
 						getVideoSampleTime(atombuf, totalSamples); // 移動先のサンプルタイム取得
@@ -1119,7 +1130,7 @@ int PlayMotionJpeg(int id){
 						videoStcoCount -= 2, soundStcoCount -= 2;
 						goto CHUNK_OFFSET_HEAD;
 					}
-					if(dac_intr.sound_reads >= prevSamplesSound * soundSampleBlocks){
+					if(dac_intr.sound_reads >= (prevSamplesSound * soundSampleBlocks)){
 						if(++soundStcoCount < sound_stco.numEntry){
 							soundEndFlag = 0;
 
@@ -1178,11 +1189,12 @@ int PlayMotionJpeg(int id){
 					totalBytes = 0;
 				}
 				if(!LCDStatusStruct.waitExitKey){
+					ret = RET_PLAY_STOP;
 					goto END_PROCESS; // play abort
 				}
 			}
 			AUDIO_OUT_ENABLE;
-			if(++videoStcoCount >= (video_stco.numEntry)){// || soundStcoCount >= (sound_stco.numEntry)){
+			if(++videoStcoCount >= video_stco.numEntry){// || soundStcoCount >= (sound_stco.numEntry)){
 				goto END_PROCESS; // ビデオチャンクカウントが最後までいったら再生終了
 			}
 		}
@@ -1212,10 +1224,8 @@ int PlayMotionJpeg(int id){
 	dac_intr.func = '\0';
 	my_fclose(fp);
 
-	if(pcf_font.isOK){
-		LCD_FUNC.putChar = putCharTmp;
-		LCD_FUNC.putWideChar = putWideCharTmp;
-	}
+	LCD_FUNC.putChar = putCharTmp;
+	LCD_FUNC.putWideChar = putWideCharTmp;
 
 	LCDSetWindowArea(0, 0, LCD_WIDTH, LCD_HEIGHT);
 

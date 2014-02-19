@@ -69,6 +69,11 @@ volatile struct {
 	MY_FILE *fp;
 } dac_intr;
 
+volatile struct{
+	int8_t flag_make_rand, play_continuous, mode_changed, initial_mode;
+	uint8_t *pRandIdEntry;
+} shuffle_play;
+
 typedef struct{
 	int currentTotalSec;
 	uint8_t update, \
@@ -99,6 +104,8 @@ extern uint8_t vocal_cancel_mode;
 #define NAV_PLAY_ENTIRE           1
 #define NAV_INFINITE_PLAY_ENTIRE  2
 #define NAV_INFINITE_ONE_PLAY     3
+#define NAV_SHUFFLE_PLAY          4
+
 
 extern void DAC_Buffer_Process_Stereo_S16bit();
 extern void DAC_Buffer_Process_Mono_U8bit();
