@@ -77,7 +77,7 @@ uint8_t   SCSI_Sense_Tail;
 uint16_t  SCSI_blk_size;
 uint32_t  SCSI_blk_nbr;
 
-uint32_t  SCSI_blk_addr;
+uint64_t  SCSI_blk_addr;
 uint32_t  SCSI_blk_len;
 
 USB_OTG_CORE_HANDLE  *cdev;
@@ -280,9 +280,9 @@ static int8_t SCSI_ReadCapacity10(uint8_t lun, uint8_t *params)
   else
   {
     
-    MSC_BOT_Data[0] = (uint8_t)(SCSI_blk_nbr - 1 >> 24);
-    MSC_BOT_Data[1] = (uint8_t)(SCSI_blk_nbr - 1 >> 16);
-    MSC_BOT_Data[2] = (uint8_t)(SCSI_blk_nbr - 1 >>  8);
+    MSC_BOT_Data[0] = (uint8_t)((SCSI_blk_nbr - 1) >> 24);
+    MSC_BOT_Data[1] = (uint8_t)((SCSI_blk_nbr - 1) >> 16);
+    MSC_BOT_Data[2] = (uint8_t)((SCSI_blk_nbr - 1) >>  8);
     MSC_BOT_Data[3] = (uint8_t)(SCSI_blk_nbr - 1);
     
     MSC_BOT_Data[4] = (uint8_t)(SCSI_blk_size >>  24);
@@ -326,9 +326,9 @@ static int8_t SCSI_ReadFormatCapacity(uint8_t lun, uint8_t *params)
   else
   {
     MSC_BOT_Data[3] = 0x08;
-    MSC_BOT_Data[4] = (uint8_t)(blk_nbr - 1 >> 24);
-    MSC_BOT_Data[5] = (uint8_t)(blk_nbr - 1 >> 16);
-    MSC_BOT_Data[6] = (uint8_t)(blk_nbr - 1 >>  8);
+    MSC_BOT_Data[4] = (uint8_t)((blk_nbr - 1) >> 24);
+    MSC_BOT_Data[5] = (uint8_t)((blk_nbr - 1) >> 16);
+    MSC_BOT_Data[6] = (uint8_t)((blk_nbr - 1) >>  8);
     MSC_BOT_Data[7] = (uint8_t)(blk_nbr - 1);
     
     MSC_BOT_Data[8] = 0x02;
@@ -537,14 +537,13 @@ static int8_t SCSI_Read10(uint8_t lun , uint8_t *params)
       return -1;
     } 
     
-    SCSI_blk_addr = (params[2] << 24) | \
-      (params[3] << 16) | \
-        (params[4] <<  8) | \
-          params[5];
+    SCSI_blk_addr = (uint32_t)(params[2] << 24) | \
+    				(uint32_t)(params[3] << 16) | \
+    				(uint32_t)(params[4] <<  8) | \
+    				(uint32_t)(params[5]);
     
-    SCSI_blk_len =  (params[7] <<  8) | \
-      params[8];  
-    
+    SCSI_blk_len =  (uint32_t)(params[7] <<  8) | \
+    				(uint32_t)(params[8]);
     
     
     if( SCSI_CheckAddressRange(lun, SCSI_blk_addr, SCSI_blk_len) < 0)
@@ -553,8 +552,8 @@ static int8_t SCSI_Read10(uint8_t lun , uint8_t *params)
     }
     
     MSC_BOT_State = BOT_DATA_IN;
-    SCSI_blk_addr *= SCSI_blk_size;
-    SCSI_blk_len  *= SCSI_blk_size;
+    SCSI_blk_addr <<= 9;
+    SCSI_blk_len  <<= 9;
     
     /* cases 4,5 : Hi <> Dn */
     if (MSC_BOT_cbw.dDataLength != SCSI_blk_len)
@@ -616,12 +615,13 @@ static int8_t SCSI_Write10 (uint8_t lun , uint8_t *params)
     } 
     
     
-    SCSI_blk_addr = (params[2] << 24) | \
-      (params[3] << 16) | \
-        (params[4] <<  8) | \
-          params[5];
-    SCSI_blk_len = (params[7] <<  8) | \
-      params[8];  
+    SCSI_blk_addr = (uint32_t)(params[2] << 24) | \
+    				(uint32_t)(params[3] << 16) | \
+    				(uint32_t)(params[4] <<  8) | \
+    				(uint32_t)(params[5]);
+
+    SCSI_blk_len =  (uint32_t)(params[7] <<  8) | \
+    				(uint32_t)(params[8]);
     
     /* check if LBA address is in the right range */
     if(SCSI_CheckAddressRange(lun, SCSI_blk_addr, SCSI_blk_len) < 0)
@@ -629,8 +629,8 @@ static int8_t SCSI_Write10 (uint8_t lun , uint8_t *params)
       return -1; /* error */      
     }
     
-    SCSI_blk_addr *= SCSI_blk_size;
-    SCSI_blk_len  *= SCSI_blk_size;
+    SCSI_blk_addr <<= 9;
+    SCSI_blk_len  <<= 9;
     
     /* cases 3,11,13 : Hn,Ho <> D0 */
     if (MSC_BOT_cbw.dDataLength != SCSI_blk_len)
@@ -723,8 +723,8 @@ static int8_t SCSI_ProcessRead (uint8_t lun)
   
   if( USBD_STORAGE_fops->Read(lun ,
                               MSC_BOT_Data, 
-                              SCSI_blk_addr / SCSI_blk_size, 
-                              len / SCSI_blk_size) < 0)
+                              SCSI_blk_addr >> 9,
+                              len >> 9) < 0)
   {
     
     SCSI_SenseCode(lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
@@ -770,8 +770,8 @@ static int8_t SCSI_ProcessWrite (uint8_t lun)
   
   if(USBD_STORAGE_fops->Write(lun ,
                               MSC_BOT_Data, 
-                              SCSI_blk_addr / SCSI_blk_size, 
-                              len / SCSI_blk_size) < 0)
+                              SCSI_blk_addr >> 9,
+                              len >> 9) < 0)
   {
     SCSI_SenseCode(lun, HARDWARE_ERROR, WRITE_FAULT);     
     return -1; 
