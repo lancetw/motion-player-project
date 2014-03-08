@@ -7,6 +7,34 @@ internal_flash_pcf_font:
 .global _sizeof_internal_flash_pcf_font
 .set _sizeof_internal_flash_pcf_font, . - internal_flash_pcf_font
 
+.balign 2
+.global video_info_board_170x170
+video_info_board_170x170:
+.incbin "video_info_board_170x170.bin"
+.global _sizeof_video_info_board_170x170
+.set _sizeof_video_info_board_170x170, . - video_info_board_170x170
+
+.balign 2
+.global video_info_board_170x170_alpha
+video_info_board_170x170_alpha:
+.incbin "video_info_board_170x170_alpha.bin"
+.global _sizeof_video_info_board_170x170_alpha
+.set _sizeof_video_info_board_170x170_alpha, . - video_info_board_170x170_alpha
+
+
+.balign 2
+.global video_info_26x24
+video_info_26x24:
+.incbin "video_info_26x24.bin"
+.global _sizeof_video_info_26x24
+.set _sizeof_video_info_26x24, . - video_info_26x24
+
+.balign 2
+.global video_info_26x24_alpha
+video_info_26x24_alpha:
+.incbin "video_info_26x24_alpha.bin"
+.global _sizeof_video_info_26x24_alpha
+.set _sizeof_video_info_26x24_alpha, . - video_info_26x24_alpha
 
 .balign 2
 .global music_underbar_320x80

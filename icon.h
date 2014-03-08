@@ -81,6 +81,11 @@ extern void Update_Reverb_Effect_Icon(uint8_t index);
 extern void Update_Vocal_Canceler_Icon(uint8_t index);
 
 
+extern const uint16_t video_info_26x24[],_sizeof_video_info_26x24[];
+extern const uint8_t video_info_26x24_alpha[],_sizeof_video_info_26x24_alpha[];
+
+extern const uint16_t video_info_board_170x170[],_sizeof_video_info_board_170x170[];
+extern const uint8_t video_info_board_170x170_alpha[],_sizeof_video_info_board_170x170_alpha[];
 
 extern const uint16_t music_underbar_320x80[],_sizeof_music_underbar_320x80[];
 extern const uint8_t music_underbar_320x80_alpha[],_sizeof_music_underbar_320x80_alpha[];

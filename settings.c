@@ -887,16 +887,20 @@ void *SETTINGS_CORE_TEMPERATURE(void *arg)
 		LCDPutString(s, WHITE);
 
 		while(!TIM_GetFlagStatus(TIM1, TIM_FLAG_Update)){
-			if((TP_PEN_INPUT_BB == Bit_RESET) || !LCDStatusStruct.waitExitKey){
+			if((TP_PEN_INPUT_BB == Bit_RESET)){
 				goto EXIT_SETTINGS_CORE_TEMPERATURE;
+			}
+			if(USART_GetFlagStatus(USART3, USART_FLAG_RXNE)){
+				USART_ClearFlag(USART3, USART_FLAG_RXNE);
+				if(USART_ReceiveData(USART3) == CURSOR_ENTER){
+					goto EXIT_SETTINGS_CORE_TEMPERATURE;
+				}
 			}
 		}
 		TIM_SetCounter(TIM1, 0);
 		TIM_ClearFlag(TIM1, TIM_FLAG_Update);
 	}
-
 EXIT_SETTINGS_CORE_TEMPERATURE:
-
 	ADC_DeInit();
 	return NULL;
 }

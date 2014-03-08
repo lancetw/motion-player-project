@@ -246,13 +246,19 @@ typedef struct media_video{
 	video_flag flag;
 	uint32_t timeScale,
 	         duration;
-	int16_t width, height, startPosX, startPosY;
+	int16_t width, height, frameRate, startPosX, startPosY;
+	char videoFmtString[5], videoCmpString[15], playJpeg;
 } media_video;
 
 volatile struct{
 	media_sound sound;
 	media_video video;
 } media;
+
+typedef struct {
+	int output_scanline, frame_size, rasters, buf_size;
+	uint16_t *p_raster;
+} raw_video_typedef;
 
 
 /* --- TIM1 SR Register ---*/

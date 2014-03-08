@@ -131,10 +131,17 @@ int collectAtoms(MY_FILE *fp, size_t parentAtomSize, size_t child)
 			my_fseek(fp, 8, SEEK_CUR); // skip Reserved(6bytes)/Data Reference Index
 			my_fread(atombuf, 1, 4, fp); // next atom size
 			my_fread(atombuf, 1, getAtomSize(atombuf) - 4, fp);
-//			if(media.video.flag.process && !media.video.flag.complete){
-//				video_stts.numEntry = getAtomSize(atombuf);
-//				memcpy((void*)&video_stts.fp, (void*)fp, sizeof(MY_FILE));
-//			}
+			if(media.video.flag.process && !media.video.flag.complete){
+				memset((void*)media.video.videoFmtString, '\0', sizeof(media.video.videoFmtString));
+				memset((void*)media.video.videoCmpString, '\0', sizeof(media.video.videoCmpString));
+				memcpy((void*)media.video.videoFmtString, (void*)atombuf, 4);
+				memcpy((void*)media.video.videoCmpString, (void*)&atombuf[47], atombuf[46]);
+				if(strncmp((char*)media.video.videoFmtString, "jpeg", 4) == 0){
+					media.video.playJpeg = 1; // JPEG
+				} else {
+					media.video.playJpeg = 0; // Uncompression
+				}
+			}
 			if(media.sound.flag.process && !media.sound.flag.complete){
 				memcpy((void*)&media.sound.format, (void*)atombuf, sizeof(sound_format));
 				media.sound.format.version = (uint16_t)b2l((void*)&media.sound.format.version, sizeof(uint16_t));
@@ -243,16 +250,20 @@ static inline uint32_t getVideoSampleTime(uint8_t *atombuf, uint32_t sampleID)
 	return duration;
 }
 
+void *putCharTmp = '\0', *putWideCharTmp = '\0';
+
 
 void mjpegTouch(void) // タッチペン割込み処理
 {
 	static int prev_posX = 0;
-	uint32_t pointed_chunk, firstChunk, prevChunk, prevSamples, samples, totalSamples = 0, jFrameSize, jFrameOffset;
+	uint32_t i, pointed_chunk, firstChunk, prevChunk, prevSamples, samples, totalSamples = 0, jFrameSize, jFrameOffset;
 	struct jpeg_decompress_struct jdinfo;
 	struct jpeg_error_mgr jerr;
 	djpeg_dest_ptr dest_mgr = NULL;
-	MY_FILE fp_stsc, fp_stsz, fp_stco, fp_jpeg, fp_frame;
+	MY_FILE fp_stsc, fp_stsz, fp_stco, fp_jpeg, fp_frame, fp_frame_cp;
 	uint8_t atombuf[12];
+
+	raw_video_typedef raw;
 
 	prepare_range_limit_table2((uint8_t*)progress_circular_bar_16x16x12_buff, &jdinfo);
 	build_ycc_rgb_table2((uint8_t*)&progress_circular_bar_16x16x12_buff[1408 / 2], &jdinfo);
@@ -290,12 +301,48 @@ void mjpegTouch(void) // タッチペン割込み処理
 		return;
 	}
 
-	if((touch.posX > 10 && touch.posX < 50) && (touch.posY > 200 && touch.posY < 230)){ // 閉じるアイコン判定
+	if((touch.posX > 10 && touch.posX < 50) && (touch.posY > 200 && touch.posY < 230)){ // detect close icon
 		mjpeg_touch.id = 1;
 		mjpeg_touch.done = 1;
-	} else if((touch.posX > 142 && touch.posX < 176) && (touch.posY > 189 && touch.posY < 221)){ // 再生アイコン判定
+	} else if((touch.posX > 142 && touch.posX < 176) && (touch.posY > 189 && touch.posY < 221)){ // detect play icon
 		mjpeg_touch.id = 2;
 		mjpeg_touch.done = 1;
+	} else if((touch.posX > 270  && touch.posX < 320) && (touch.posY > 10 && touch.posY < 50)){ // detect video info icon
+		char s[40], timeStr[10];
+		LCDPutIcon(74, 19, 170, 170, video_info_board_170x170, video_info_board_170x170_alpha);
+
+		LCD_FUNC.putChar = putCharTmp;
+		LCD_FUNC.putWideChar = putWideCharTmp;
+
+		clx = 85, cly = 28;
+		LCDPutString("[Video]\n", WHITE);
+		clx = 85,
+		sprintf(s, "Type: %s\n", media.video.videoCmpString);
+		LCDPutString(s, WHITE);
+		clx = 85;
+		sprintf(s, "Dimension: %d x %d\n", media.video.width, media.video.height);
+		LCDPutString(s, WHITE);
+		clx = 85;
+		sprintf(s, "Frame Rate: %d fps\n", media.video.frameRate);
+		LCDPutString(s, WHITE);
+		setStrSec(timeStr, (int)((float)media.video.duration / (float)media.video.timeScale + 0.5f));
+		clx = 85;
+		sprintf(s, "Duration: %s\n\n", timeStr);
+		LCDPutString(s, WHITE);
+
+		clx = 85;
+		LCDPutString("[Sound]\n", WHITE);
+		clx = 85;
+		sprintf(s, "Channels: %s\n", media.sound.format.numChannel <= 1 ? "Mono" : "Stereo");
+		LCDPutString(s, WHITE);
+		clx = 85;
+		sprintf(s, "Sample Size: %d bit\n", media.sound.format.sampleSize);
+		LCDPutString(s, WHITE);
+		clx = 85;
+		sprintf(s, "Sample Rate: %d Hz\n", media.sound.format.sampleRate);
+		LCDPutString(s, WHITE);
+
+		while(TP_PEN_INPUT_BB != Bit_RESET){};
 	} else if(prev_posX != touch.posX) { // 動画シーク先のプレビューを表示
 		if(touch.posY > 190){
 			return;
@@ -338,11 +385,13 @@ void mjpegTouch(void) // タッチペン割込み処理
 			prevSamples = getSampleSize(atombuf, 8, &fp_stsc); // samplesPerChunk sampleDescriptionID
 			firstChunk = getSampleSize(atombuf, 4, &fp_stsc); // 次のfirstChunk
 		}
-		my_fseek(&fp_stsz, totalSamples * 4, SEEK_CUR);
-		jFrameSize = getSampleSize(atombuf, 4, &fp_stsz);
+		if(media.video.playJpeg){
+			my_fseek(&fp_stsz, totalSamples * 4, SEEK_CUR);
+			jFrameSize = getSampleSize(atombuf, 4, &fp_stsz);
 
-		memcpy((void*)&fp_stsz, (void*)&video_stsz.fp, sizeof(MY_FILE));
-		my_fseek(&fp_stsz, totalSamples * 4, SEEK_CUR);
+			memcpy((void*)&fp_stsz, (void*)&video_stsz.fp, sizeof(MY_FILE));
+			my_fseek(&fp_stsz, totalSamples * 4, SEEK_CUR);
+		}
 
 		my_fseek(&fp_stco, (pointed_chunk - 1) * 4, SEEK_CUR);
 		jFrameOffset = getSampleSize(atombuf, 4, &fp_stco);
@@ -352,11 +401,20 @@ void mjpegTouch(void) // タッチペン割込み処理
 
 		my_fseek(&fp_frame, jFrameOffset, SEEK_SET);
 
-		fp_jpeg.fileSize = jFrameSize;
-		fp_jpeg.seekBytes = 0;
+		if(media.video.playJpeg){
+			fp_jpeg.fileSize = jFrameSize;
+			fp_jpeg.seekBytes = 0;
 
-		my_fread((void*)CCM_BASE, 1, jFrameSize, &fp_frame);
-		jpeg_read.frame_size = jFrameSize;
+			my_fread((void*)CCM_BASE, 1, jFrameSize, &fp_frame);
+			jpeg_read.frame_size = jFrameSize;
+		} else {
+			raw.output_scanline = 0;
+			raw.frame_size = media.video.width * media.video.height * sizeof(uint16_t);
+			raw.rasters = 50;
+			raw.buf_size = raw.rasters * media.video.width * sizeof(uint16_t);
+			memcpy((void*)&fp_frame_cp, (void*)&fp_frame, sizeof(MY_FILE));
+			my_fseek(&fp_frame, raw.frame_size, SEEK_CUR);
+		}
 
 		if(media.video.width != LCD_WIDTH || media.video.height != LCD_HEIGHT){
 			LCDDrawSquare(0, 0, LCD_WIDTH, media.video.startPosY, BLACK);
@@ -369,23 +427,38 @@ void mjpegTouch(void) // タッチペン割込み処理
 		LCDSetGramAddr(media.video.startPosX, media.video.startPosY);
 		LCDPutCmd(0x0022);
 
-		create_mpool();
-		jpeg_create_decompress(&jdinfo);
+		if(media.video.playJpeg){
+			create_mpool();
+			jpeg_create_decompress(&jdinfo);
 
-		/* Specify data source for decompression */
-		jpeg_stdio_src(&jdinfo, &fp_jpeg);
+			/* Specify data source for decompression */
+			jpeg_stdio_src(&jdinfo, &fp_jpeg);
 
-		/* Read file header, set default decompression parameters */
-		(void) jpeg_read_header(&jdinfo, TRUE);
+			/* Read file header, set default decompression parameters */
+			(void) jpeg_read_header(&jdinfo, TRUE);
 
-		dest_mgr = jinit_write_ppm(&jdinfo);
+			dest_mgr = jinit_write_ppm(&jdinfo);
 
-		/* Start decompressor */
-		(void) jpeg_start_decompress(&jdinfo);
+			/* Start decompressor */
+			(void) jpeg_start_decompress(&jdinfo);
 
-		/* Process data */
-		while (jdinfo.output_scanline < jdinfo.output_height) {
-		  jpeg_read_scanlines(&jdinfo, dest_mgr->buffer, dest_mgr->buffer_height);
+			/* Process data */
+			while (jdinfo.output_scanline < jdinfo.output_height) {
+			  jpeg_read_scanlines(&jdinfo, dest_mgr->buffer, dest_mgr->buffer_height);
+			}
+		} else {
+			while((raw.output_scanline < media.video.height)){
+				if(raw.frame_size < raw.buf_size){
+					raw.buf_size = raw.frame_size;
+				}
+				my_fread((void*)mempool, 1, raw.buf_size, &fp_frame_cp);
+				raw.p_raster = (uint16_t*)mempool;
+				for(i = 0;i < (raw.buf_size >> 1);i++){
+					LCD->RAM = *raw.p_raster++;
+				}
+				raw.frame_size = raw.frame_size - raw.buf_size;
+				raw.output_scanline = raw.output_scanline + raw.rasters;
+			}
 		}
 //		debug.printf("\r\npointed_chunk:%d jFrameSize:%d JFrameOffset:%d totalSamples:%d", pointed_chunk, jFrameSize, JFrameOffset, totalSamples);
 		mjpeg_touch.id = 99;
@@ -403,8 +476,10 @@ void mjpegTouch(void) // タッチペン割込み処理
 		memcpy((void*)pv_src.fp_video_stco, (void*)&fp_stco, sizeof(MY_FILE));
 		memcpy((void*)pv_src.fp_frame, (void*)&fp_frame, sizeof(MY_FILE));
 
-		(void) jpeg_finish_decompress(&jdinfo);
-		jpeg_destroy_decompress(&jdinfo);
+		if(media.video.playJpeg){
+			(void) jpeg_finish_decompress(&jdinfo);
+			jpeg_destroy_decompress(&jdinfo);
+		}
 
 		// Sound
 		memcpy((void*)&fp_stsc, (void*)&sound_stsc.fp, sizeof(MY_FILE));
@@ -528,11 +603,11 @@ int mjpegPause()
 
 	Update_Navigation_Loop_Icon(navigation_loop_mode);
 
+	LCDPutIcon(280, 18, 26, 24, video_info_26x24, video_info_26x24_alpha);
 	LCDPutIcon(142, 189, 32, 32, navigation_playing_patch_32x32, navigation_playing_patch_32x32_alpha);
 	LCDPutIcon(193, 197, 32, 17, next_right_32x17, next_right_32x17_alpha);
 	LCDPutIcon(91, 197, 32, 17, next_left_32x17, next_left_32x17_alpha);
 	LCDPutIcon(18, 210, 20, 13, exit_play_20x13, exit_play_20x13_alpha);
-
 
 	position = LCD_WIDTH * (float)((float)*pv_src.videoStcoCount / (float)video_stco.numEntry) - 10;
 
@@ -556,6 +631,7 @@ int mjpegPause()
 		if(mjpeg_touch.id == 99){
 			if((GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_SET && !mjpeg_touch.draw_icon)){
 
+				LCDPutIcon(280, 18, 26, 24, video_info_26x24, video_info_26x24_alpha);
 				LCDPutIcon(142, 189, 32, 32, navigation_playing_patch_32x32, navigation_playing_patch_32x32_alpha);
 				LCDPutIcon(193, 197, 32, 17, next_right_32x17, next_right_32x17_alpha);
 				LCDPutIcon(91, 197, 32, 17, next_left_32x17, next_left_32x17_alpha);
@@ -619,14 +695,12 @@ int PlayMotionJpeg(int id){
 	TOUCH_PINIRQ_DISABLE;
 	touch.func = touch_empty_func;
 
-	register uint32_t i, j;
+	register uint32_t i, j, k;
 	int ret = 0;
 
 	struct jpeg_decompress_struct jdinfo;
 	struct jpeg_error_mgr jerr;
 	djpeg_dest_ptr dest_mgr = NULL;
-
-	void *putCharTmp = '\0', *putWideCharTmp = '\0';
 
 	uint32_t fps, frames, prevFrames, sample_time_limit;
 	uint32_t samples, frameDuration, numEntry;
@@ -640,13 +714,15 @@ int PlayMotionJpeg(int id){
 	const char fps1Hz[] = "|/-\\";
 	char timeStr[20];
 
+	raw_video_typedef raw;
+
 	prepare_range_limit_table2((uint8_t*)progress_circular_bar_16x16x12_buff, &jdinfo);
 	build_ycc_rgb_table2((uint8_t*)&progress_circular_bar_16x16x12_buff[1408 / 2], &jdinfo);
 
 	drawBuff_typedef drawBuff;
 	_drawBuff = &drawBuff;
 
-	MY_FILE fp_sound, fp_frame, \
+	MY_FILE fp_sound, fp_frame, fp_frame_cp, \
 			fp_stsc, fp_stsz, fp_stco, \
 			fp_sound_stsc, fp_sound_stsz, fp_sound_stco, \
 			fp_jpeg, \
@@ -690,13 +766,16 @@ int PlayMotionJpeg(int id){
 	debug.printf("\r\nstco:%d", sound_stco.numEntry);
 
 	debug.printf("\r\n\n[Video Track]");
+	debug.printf("\r\nformat:%s", media.video.videoFmtString);
+	debug.printf("\r\ncompression:%s", media.video.videoCmpString);
 	debug.printf("\r\nwidth:%d", media.video.width);
 	debug.printf("\r\nheight:%d", media.video.height);
 	debug.printf("\r\ntimeScale:%d", media.video.timeScale);
 	debug.printf("\r\nduration:%d", media.video.duration);
 	setStrSec(timeStr, (int)((float)media.video.duration / (float)media.video.timeScale + 0.5f));
+	media.video.frameRate = (int16_t)((float)(media.video.timeScale * video_stsz.numEntry) / media.video.duration + 0.5f);
+	debug.printf("\r\nframe rate:%d", media.video.frameRate);
 	debug.printf("\r\ntime:%s", timeStr);
-
 
 	debug.printf("\r\n\n[Sound Track]");
 	char s[5];
@@ -728,6 +807,8 @@ int PlayMotionJpeg(int id){
 	media.video.height += (media.video.height % 2); // if value is odd number, convert to even
 
 /*
+ 	// DEBUG SAMPLE TABLES >>
+	uint32_t sampleCount, sampleDuration, totalSampleCount, totalSampleDuration, samplesPerChunk, sampleDscId, chunkOffset;
  	MY_FILE fp_tmp;
 	memcpy((void*)&fp_tmp, (void*)&video_stts.fp, sizeof(MY_FILE));
 
@@ -738,10 +819,10 @@ int PlayMotionJpeg(int id){
 	debug.printf("\r\n\nTimeToSample(stts)");
 
 	for(i = 0;i < video_stts.numEntry;i++){
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		sampleCount = getAtomSize(atombuf);
 
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		sampleDuration = getAtomSize(atombuf);
 
 
@@ -763,13 +844,13 @@ int PlayMotionJpeg(int id){
 	memcpy((void*)&fp_tmp, (void*)&video_stsc.fp, sizeof(MY_FILE));
 
 	for(i = 0;i < video_stsc.numEntry;i++){
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		firstChunk = getAtomSize(atombuf);
 
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		samplesPerChunk = getAtomSize(atombuf);
 
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		sampleDscId = getAtomSize(atombuf);
 
 		debug.printf("\r\n%02d:%04x %04x %04x", i, firstChunk, samplesPerChunk, sampleDscId);
@@ -792,7 +873,7 @@ int PlayMotionJpeg(int id){
 
 
 	for(i = 0;i < video_stco.numEntry;i++){
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		chunkOffset = getAtomSize(atombuf);
 
 		debug.printf("\r\n%04d:%08x", i, chunkOffset);
@@ -812,10 +893,10 @@ int PlayMotionJpeg(int id){
 	debug.printf("\r\n\nTimeToSample(stts)");
 
 	for(i = 0;i < sound_stts.numEntry;i++){
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		sampleCount = getAtomSize(atombuf);
 
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		sampleDuration = getAtomSize(atombuf);
 
 
@@ -837,13 +918,13 @@ int PlayMotionJpeg(int id){
 	memcpy((void*)&fp_tmp, (void*)&sound_stsc.fp, sizeof(MY_FILE));
 
 	for(i = 0;i < sound_stsc.numEntry;i++){
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		firstChunk = getAtomSize(atombuf);
 
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		samplesPerChunk = getAtomSize(atombuf);
 
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		sampleDscId = getAtomSize(atombuf);
 
 		debug.printf("\r\n%02d:%04x %04x %04x", i, firstChunk, samplesPerChunk, sampleDscId);
@@ -866,13 +947,13 @@ int PlayMotionJpeg(int id){
 
 
 	for(i = 0;i < sound_stco.numEntry;i++){
-		my_fread(atombuf, 4, &fp_tmp);
+		my_fread(atombuf, 1, 4, &fp_tmp);
 		chunkOffset = getAtomSize(atombuf);
 
 		debug.printf("\r\n%04d:%08x", i, chunkOffset);
 	}
+	// << DEBUG SAMPLE TABLES
 */
-
 	/*** MotionJPEG Play Process ***/
 	debug.printf("\r\n\n[Play]\n");
 
@@ -1063,37 +1144,16 @@ int PlayMotionJpeg(int id){
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, ENABLE);
 	DMA_Cmd(DMA1_Stream1, ENABLE);
 
-	uint32_t totalRasters = 0;
-
 	while(1){
 		CHUNK_OFFSET_HEAD:
 		for(j = 0;j < samples;j++){
 
 			my_fseek(&fp_frame, getSampleSize(atombuf, 4, &fp_stco), SEEK_SET);
-			my_fread(prevSamplesBuff, 1, prevSamples * 4, &fp_stsz);
+			if(media.video.playJpeg){
+				my_fread(prevSamplesBuff, 1, prevSamples * 4, &fp_stsz);
+			}
 
 			for(i = 0;i < prevSamples;i++){
-				fp_jpeg.seekBytes = 0;
-				fp_jpeg.fileSize = getAtomSize(&prevSamplesBuff[i]);
-
-				my_fread((void*)CCM_BASE, 1, fp_jpeg.fileSize, &fp_frame);
-				jpeg_read.frame_size = fp_jpeg.fileSize;
-
-				totalBytes += fp_jpeg.fileSize;
-
-				mpool_struct.mem_seek = 0;
-				jpeg_create_decompress(&jdinfo);
-
-				/* Specify data source for decompression */
-				jpeg_stdio_src(&jdinfo, &fp_jpeg);
-
-				/* Read file header, set default decompression parameters */
-				(void) jpeg_read_header(&jdinfo, TRUE);
-
-				dest_mgr = jinit_write_ppm(&jdinfo);
-
-				/* Start decompressor */
-				(void) jpeg_start_decompress(&jdinfo);
 
 				sample_time_limit = TIM3->ARR * limitter;
 
@@ -1102,31 +1162,73 @@ int PlayMotionJpeg(int id){
 				LCDSetGramAddr(media.video.startPosX, media.video.startPosY);
 				LCDPutCmd(0x0022);
 
+				if(media.video.playJpeg){ // Jpeg compressed media
+					fp_jpeg.seekBytes = 0;
+					fp_jpeg.fileSize = getAtomSize(&prevSamplesBuff[i]);
 
-				DMA_SOUND_IT_ENABLE; // DAC割り込み許可
+					my_fread((void*)CCM_BASE, 1, fp_jpeg.fileSize, &fp_frame);
+					jpeg_read.frame_size = fp_jpeg.fileSize;
+
+					totalBytes += fp_jpeg.fileSize;
+
+					mpool_struct.mem_seek = 0;
+					jpeg_create_decompress(&jdinfo);
+
+					/* Specify data source for decompression */
+					jpeg_stdio_src(&jdinfo, &fp_jpeg);
+
+					/* Read file header, set default decompression parameters */
+					(void) jpeg_read_header(&jdinfo, TRUE);
+
+					dest_mgr = jinit_write_ppm(&jdinfo);
+
+					/* Start decompressor */
+					(void) jpeg_start_decompress(&jdinfo);
+				} else { // Uncompress media
+					raw.output_scanline = 0;
+					raw.frame_size = media.video.width * media.video.height * sizeof(uint16_t);
+					raw.rasters = 50;
+					raw.buf_size = raw.rasters * media.video.width * sizeof(uint16_t);
+					memcpy((void*)&fp_frame_cp, (void*)&fp_frame, sizeof(MY_FILE));
+					my_fseek(&fp_frame, raw.frame_size, SEEK_CUR);
+					totalBytes += raw.frame_size;
+				}
+
+
+				DMA_SOUND_IT_ENABLE; // Enable DAC interrupt
 				while(!TIM3_SR_UIF_BB){ // while TIM3->SR Update Flag is unset
-					if((jdinfo.output_scanline < jdinfo.output_height) && (TIM3->CNT < sample_time_limit)){ // JPEGラスタ描画
-						jpeg_read_scanlines(&jdinfo, dest_mgr->buffer, dest_mgr->buffer_height);
-//						totalRasters++;
+					if(media.video.playJpeg){
+						if((jdinfo.output_scanline < jdinfo.output_height) && (TIM3->CNT < sample_time_limit)){ // JPEG draw rasters
+							jpeg_read_scanlines(&jdinfo, dest_mgr->buffer, dest_mgr->buffer_height);
+						}
+					} else if ((raw.output_scanline < media.video.height) && (TIM3->CNT < sample_time_limit)){ // Uncompress draw rasters
+						if(raw.frame_size < raw.buf_size){
+							raw.buf_size = raw.frame_size;
+						}
+						DMA_SOUND_IT_DISABLE;
+						my_fread((void*)mempool, 1, raw.buf_size, &fp_frame_cp);
+						DMA_SOUND_IT_ENABLE;
+						raw.p_raster = (uint16_t*)mempool;
+						for(k = 0;k < (raw.buf_size >> 1);k++){
+							LCD->RAM = *raw.p_raster++;
+						}
+						raw.frame_size = raw.frame_size - raw.buf_size;
+						raw.output_scanline = raw.output_scanline + raw.rasters;
 					}
-//					if(jdinfo.output_scanline >= jdinfo.output_height){
-//						totalRasters = TIM3->CNT;
-//						debug.printf("\r\nTR:%d", totalRasters);
-//					}
-					if((abs(soundStcoCount - videoStcoCount) > 1) && !soundEndFlag){ //　音ズレ修正
+					if((abs(soundStcoCount - videoStcoCount) > 1) && !soundEndFlag){ //　correct synch unmatch
 						if(soundStcoCount >= (sound_stco.numEntry - 2) || videoStcoCount >= (video_stco.numEntry - 2)){
 							goto END_PROCESS;
 						}
 						mjpeg_touch.resynch = 1;
 						mjpeg_touch.resynch_entry = soundStcoCount > videoStcoCount ? videoStcoCount : soundStcoCount;
 						debug.printf("\r\n*synch unmatch at video_stco:%d sound_stco:%d\n", videoStcoCount, soundStcoCount);
-						DMA_SOUND_IT_DISABLE; // DAC割込み不許可
+						DMA_SOUND_IT_DISABLE; // Disable DAC interrupt
 						mjpegTouch();
 						samples /= prevSamples;
 						mjpeg_touch.resynch = 0;
-						getVideoSampleTime(atombuf, 0); // サンプルタイム初期化
-						getVideoSampleTime(atombuf, totalSamples); // 移動先のサンプルタイム取得
-						dac_intr.sound_reads = prevSamplesSound * soundSampleBlocks; // DAC読み込みバッファ数を埋めておく
+						getVideoSampleTime(atombuf, 0); // reset sample time
+						getVideoSampleTime(atombuf, totalSamples); // get next sample time
+						dac_intr.sound_reads = prevSamplesSound * soundSampleBlocks; // fill DAC buffer
 						videoStcoCount -= 2, soundStcoCount -= 2;
 						goto CHUNK_OFFSET_HEAD;
 					}
@@ -1155,6 +1257,8 @@ int PlayMotionJpeg(int id){
 					}
 					if(TP_PEN_INPUT_BB == Bit_RESET){ // タッチパネルが押されたか？
 						ret = mjpegPause();
+						LCD_FUNC.putChar = PCFPutCharCache;
+						LCD_FUNC.putWideChar = PCFPutCharCache;
 						if(ret == RET_PLAY_STOP || ret == RET_PLAY_NEXT || ret == RET_PLAY_PREV){
 							goto END_PROCESS;
 						}
@@ -1212,8 +1316,10 @@ int PlayMotionJpeg(int id){
 	DMA_Cmd(DMA1_Stream1, DISABLE);
 	DMA_DeInit(DMA1_Stream1);
 
-	(void) jpeg_finish_decompress(&jdinfo);
-	jpeg_destroy_decompress(&jdinfo);
+	if(media.video.playJpeg){
+		(void) jpeg_finish_decompress(&jdinfo);
+		jpeg_destroy_decompress(&jdinfo);
+	}
 
 	EXIT_PROCESS: //
 	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream1_IRQn;

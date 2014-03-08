@@ -114,6 +114,7 @@ MATH_LIB = #-lm
 #    --cref:    add cross reference to  map file
 LDFLAGS = -T stm32_flash.ld
 #LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
+LDFLAGS += -Map=$(TARGET).map
 LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(DIRLIB)) -lcm4 -lstd -ldsp -lc -laac -lmp3
 
 # ---------------------------------------------------------------------------

@@ -17,12 +17,14 @@
 
 void USART3_IRQHandler(void)
 {
-	USART_ClearFlag(USART3, USART_IT_RXNE);
+    USART_Cmd(USART3, DISABLE);
+	USART_ClearITPendingBit(USART3, USART_IT_RXNE);
 	__IO uint16_t recv = USART3->DR;
 
 	resetDimLightTimer();
 
 	if(recv == 'p') {
+	    USART_Cmd(USART3, ENABLE);
 		xput();
 		return;
 	}
@@ -33,6 +35,7 @@ void USART3_IRQHandler(void)
 		} else {
 			LCDStatusStruct.waitExitKey = recv;
 		}
+	    USART_Cmd(USART3, ENABLE);
 		return;
 	}
 
@@ -41,6 +44,7 @@ void USART3_IRQHandler(void)
 			LCDPutCursorBar(cursor.pos);
 			LCDStoreCursorBar(0);
 			cursor.pos = 0, cursor.pageIdx = 0;
+		    USART_Cmd(USART3, ENABLE);
 			LCDCursorEnter();
 			break;
 		case CURSOR_UP:
@@ -50,6 +54,7 @@ void USART3_IRQHandler(void)
 			LCDCursorDown();
 			break;
 		case CURSOR_ENTER:
+		    USART_Cmd(USART3, ENABLE);
 			LCDCursorEnter();
 			break;
 		case CURSOR_RIGHT:
@@ -57,6 +62,7 @@ void USART3_IRQHandler(void)
 		default:
 			break;
 	}
+    USART_Cmd(USART3, ENABLE);
 
 }
 

@@ -1144,6 +1144,7 @@ void LCDPrintFileList()
 {
 //	TOUCH_PINIRQ_DISABLE;
 	touch.func = LCDTouchPoint;
+	USART_IRQ_DISABLE;
 
 	int i;
 	uint32_t var32;
@@ -1289,13 +1290,14 @@ void LCDPrintFileList()
 	LCDBackLightTimerInit();
 //	TOUCH_PINIRQ_ENABLE;
 //	TouchPenIRQ_Enable();
+	USART_IRQ_ENABLE;
 	touch.repeat = 1;
 }
 
 void LCDPrintSettingsList(char type, int select_id, settings_item_typedef *item)
 {
 //	TOUCH_PINIRQ_DISABLE;
-	USART_IRQ_DISABLE;
+//	USART_IRQ_DISABLE;
 	touch.func = LCDTouchPoint;
 
 	int i, selected_entry;
@@ -1384,7 +1386,7 @@ void LCDPrintSettingsList(char type, int select_id, settings_item_typedef *item)
 */
 	LCDStoreCursorBar(cursor.pos);
 	LCDSelectCursorBar(cursor.pos);
-	USART_IRQ_ENABLE;
+//	USART_IRQ_ENABLE;
 	LCDBackLightTimerInit();
 //	TOUCH_PINIRQ_ENABLE;
 	touch.repeat = 1;
