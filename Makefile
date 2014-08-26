@@ -3,7 +3,7 @@
 MFLOAT_ABI = softfp
 
 # MCU name
-MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -march=armv7e-m -mtune=cortex-m4 -mfloat-abi=$(MFLOAT_ABI) -mlittle-endian -mthumb-interwork -ffunction-sections -fdata-sections
+MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -march=armv7e-m -mtune=cortex-m4 -mfloat-abi=$(MFLOAT_ABI) -mlittle-endian
 
 export MCU
 
@@ -119,10 +119,10 @@ MATH_LIB = #-lm
 #  -Wl,...:     tell GCC to pass this to linker.
 #    -Map:      create map file
 #    --cref:    add cross reference to  map file
-LDFLAGS = -T stm32_flash.ld
+LDFLAGS = -T STM32F407VG_FLASH.ld
 #LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += -Map=$(TARGET).map --cref --gc-section
-LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(DIRLIB)) -lcm4 -lstd -ldsp -lc -laac -lmp3 -lnosys
+LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(DIRLIB)) -lcm4 -lstd -ldsp -lc -lgcc -laac -lmp3 -lnosys
 
 # ---------------------------------------------------------------------------
 
@@ -284,12 +284,14 @@ distclean: clean libclean
 clean:
 	$(REMOVE) $(TARGET).hex
 	$(REMOVE) $(TARGET).elf
+	$(REMOVE) $(TARGET).bin
 	$(REMOVE) $(TARGET).map
 	$(REMOVE) $(TARGET).obj
 	$(REMOVE) $(TARGET).a90
 	$(REMOVE) $(TARGET).sym
 	$(REMOVE) $(TARGET).lnk
 	$(REMOVE) $(TARGET).lss
+	$(REMOVE) $(TARGET).map
 	$(REMOVE) $(OBJ)
 	$(REMOVE) $(LST)
 	$(REMOVE) $(SRC:.c=.s)

@@ -1069,3 +1069,8 @@ lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.o
 lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_syscfg.o
 lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.o
 lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.o
+aac/trigtabs_fltgen.o
+lib/CMSIS/ST/STM32F4xx/Source/Templates/startup_stm32f4xx.o
+lib/CMSIS/ST/STM32F4xx/Source/Templates/system_stm32f4xx.o
+lib/CMSIS/ST/STM32F4xx/libcm4.a
+lib/STM32F4xx_StdPeriph_Driver/libstd.a
