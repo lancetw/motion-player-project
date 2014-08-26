@@ -960,7 +960,7 @@ int PlayMP3(int id)
  			continue;
  		}
 
-		if(!position_changed && cnt++ > 5){
+		if(!position_changed && cnt++ > 10){
 			AUDIO_OUT_ENABLE;
 		}
 
@@ -1172,9 +1172,9 @@ END_MP3:
 	MP3FreeDecoder(hMP3Decoder);
 
 EXIT_PROCESS:
+	AUDIO_OUT_SHUTDOWN;
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
 	DMA_Cmd(DMA1_Stream1, DISABLE);
-	AUDIO_OUT_SHUTDOWN;
 
 	/* Disable the TIM1 gloabal Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_TIM10_IRQn;

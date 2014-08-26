@@ -1,6 +1,6 @@
 
 # MCU name
-MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -march=armv7e-m -mtune=cortex-m4 -mfloat-abi=softfp -mlittle-endian -mthumb-interwork
+#MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -march=armv7e-m -mtune=cortex-m4 -mfloat-abi=softfp -mlittle-endian -mthumb-interwork
 
 # Target file name (without extension).
 TARGET = libdsp.a
@@ -273,7 +273,7 @@ EXTRAINCDIRS  = ../../Include
 CSTANDARD =
 
 # Place -D or -U options here
-CDEFS = -DBUILD=0x`date '+%Y%m%d'` -DARM_MATH_CM4 -D__FPU_PRESENT
+#CDEFS = -DBUILD=0x`date '+%Y%m%d'` -DARM_MATH_CM4 -D__FPU_PRESENT
 
 # Place -I options here
 CINCS =

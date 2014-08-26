@@ -152,6 +152,7 @@ int collectMediaData(MY_FILE *fp, uint32_t parentAtomSize, uint32_t child)
 			contentLength = contentLength < TAG_MAX_CNT ? contentLength : TAG_MAX_CNT;
 			my_fread(_nameTag, 1, contentLength, fp);
 			_nameTag[contentLength] = '\0';
+			_nameTag[contentLength + 1] = '\0';
 			break;
 		case CART:
 			my_fread(atombuf, 1, 16, fp);
@@ -159,6 +160,7 @@ int collectMediaData(MY_FILE *fp, uint32_t parentAtomSize, uint32_t child)
 			contentLength = contentLength < TAG_MAX_CNT ? contentLength : TAG_MAX_CNT;
 			my_fread(_artistTag, 1, contentLength, fp);
 			_artistTag[contentLength] = '\0';
+			_artistTag[contentLength + 1] = '\0';
 			break;
 		case CALB:
 			my_fread(atombuf, 1, 16, fp);
@@ -166,10 +168,12 @@ int collectMediaData(MY_FILE *fp, uint32_t parentAtomSize, uint32_t child)
 			contentLength = contentLength < TAG_MAX_CNT ? contentLength : TAG_MAX_CNT;
 			my_fread(_albumTag, 1, contentLength, fp);
 			_albumTag[contentLength] = '\0';
+			_albumTag[contentLength + 1] = '\0';
 			break;
 		case META:
 			my_fseek((MY_FILE*)&fp_tmp, 4, SEEK_CUR);
-			totalAtomSize += 4;
+			totalAtomSize -= 4;
+			atomSize -= 4;
 			break;
 		case MDHD:
 			my_fseek(fp, 12, SEEK_CUR); // skip ver/flag  creationtime modificationtime
@@ -221,7 +225,6 @@ int collectMediaData(MY_FILE *fp, uint32_t parentAtomSize, uint32_t child)
 		memcpy((void*)fp, (void*)&fp_tmp, sizeof(MY_FILE));
 
 		if(atomHasChild[index]){
-			memcpy((void*)&fp_tmp, (void*)fp, sizeof(MY_FILE));
 			if(collectMediaData(fp, atomSize - 8, child + 1) != 0){ // Re entrant
 				return -1;
 			}
@@ -232,7 +235,7 @@ NEXT:
 		my_fseek(fp, atomSize - 8, SEEK_CUR);
 		totalAtomSize += atomSize;
 //		debug.printf("\r\n***parentAtomSize:%d totalAtomSize:%d", parentAtomSize, totalAtomSize);
-	}while(parentAtomSize > totalAtomSize);
+	}while(parentAtomSize > (totalAtomSize + 8));
 
 	return 0;
 }
@@ -282,13 +285,18 @@ int PlayAAC(int id)
 	char timeStr[16];
 	uint8_t nameTag[TAG_MAX_CNT], artistTag[TAG_MAX_CNT], albumTag[TAG_MAX_CNT];
 
+	memset(nameTag, 0, sizeof(nameTag));
+	memset(artistTag, 0, sizeof(artistTag));
+	memset(albumTag, 0, sizeof(albumTag));
+
 	_nameTag = nameTag, _artistTag = artistTag, _albumTag = albumTag;
 
 	media_info_typedef media_info;
 	_media_info = &media_info;
 
 	uint8_t aac_stco_buf[4];
-	_aac_stco_struct = malloc(sizeof(aac_stco_Typedef));
+	aac_stco_Typedef aac_stco_struct;
+	_aac_stco_struct = &aac_stco_struct;
 
 	MY_FILE file_covr;
 
@@ -339,12 +347,12 @@ int PlayAAC(int id)
 //		my_fread(aac_stco_buf, 4, &aac_stco_struct.fp);
 //		my_fseek(infile, getAtomSize(aac_stco_buf), SEEK_SET);
 
-		do{
+//		do{
 			my_fread(aac_stco_buf, 1, 4, (MY_FILE*)&_aac_stco_struct->fp);
 			my_fseek(infile, getAtomSize(aac_stco_buf), SEEK_SET);
-			my_fread(aac_stco_buf, 1, 1, infile);
-		}while(aac_stco_buf[0] != 0x20 && aac_stco_buf[0] != 0x21);
-		my_fseek(infile, -1, SEEK_CUR);
+//			my_fread(aac_stco_buf, 1, 1, infile);
+//		}while(aac_stco_buf[0] != 0x20 && aac_stco_buf[0] != 0x21);
+//		my_fseek(infile, -1, SEEK_CUR);
 
 		debug.printf("\r\n\ntimeScale:%d", media_info.sound.timeScale);
 		debug.printf("\r\nduration:%d", media_info.sound.duration);
@@ -741,14 +749,12 @@ int PlayAAC(int id)
 			music_play.currentTotalSec = totalSec * (float)((float)(infile->seekBytes - mdatOffset) / (float)media_data_totalBytes);
 
 SKIP_SEEK:
-			AUDIO_OUT_SHUTDOWN;
 			cnt = 0;
 			TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
 			music_play.update = 0;
 
 			DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, ENABLE);
 			DMA_Cmd(DMA1_Stream1, ENABLE);
-//			AUDIO_OUT_ENABLE;
 		}
 		EXIT_TP:
 
@@ -771,7 +777,7 @@ SKIP_SEEK:
  		}
 		DMA_Half_Filled = 1;
 
-		if(cnt++ > 5){
+		if(cnt++ > 10){
  			AUDIO_OUT_ENABLE;
 		}
 
@@ -830,7 +836,6 @@ SKIP_SEEK:
 	 		/* FFT analyzer right */
 	 		FFT_Display_Right(&FFT, drawBuff, 0xef7d);
 		}
-
 
 		if (err) {
 			// error occurred
@@ -921,6 +926,10 @@ SKIP_SEEK:
 		debug.printf("\r\nError - %d", err);
 	}
 END_AAC:
+	AUDIO_OUT_SHUTDOWN;
+	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
+	DMA_Cmd(DMA1_Stream1, DISABLE);
+
 	AACFreeDecoder(hAACDecoder);
 
 	/* Disable the TIM1 gloabal Interrupt */
@@ -928,16 +937,10 @@ END_AAC:
 	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
-	DMA_Cmd(DMA1_Stream1, DISABLE);
-
-	AUDIO_OUT_SHUTDOWN;
-
 	LCDStatusStruct.waitExitKey = 0;
 
 	TIM_Cmd(TIM1, DISABLE);
 
-	free((void*)_aac_stco_struct);
 	/* close files */
 	my_fclose(infile);
 

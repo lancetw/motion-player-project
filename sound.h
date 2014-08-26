@@ -80,6 +80,11 @@ typedef struct{
 			comp;
 }music_play_typedef;
 
+typedef struct {
+	int enable, type, tic, cnt, shifts;
+	int16_t sLeft, sRight;
+}sound_fade_typedef;
+
 
 #define RET_PLAY_NORM  0
 #define RET_PLAY_STOP -1

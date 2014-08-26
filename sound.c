@@ -81,9 +81,9 @@ void DAC_Buffer_Process_Stereo_S16bit_PhotoFrame()
 	if(dac_intr.sound_reads >= dac_intr.contentSize){
 		NVIC_InitTypeDef NVIC_InitStructure;
 
+	    AUDIO_OUT_SHUTDOWN;
 	    DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
 	    DMA_Cmd(DMA1_Stream1, DISABLE);
-	    AUDIO_OUT_SHUTDOWN;
 
 		/* Disable DMA1_Stream1 gloabal Interrupt */
 		NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream1_IRQn;
@@ -874,7 +874,7 @@ SKIP_SEEK:
 		}
 		DMA_Half_Filled = 1;
 
-		if(cnt++ > 5){
+		if(cnt++ > 10){
 			AUDIO_OUT_ENABLE;
 		}
 
@@ -964,10 +964,6 @@ SKIP_SEEK:
 		}
 	}
 
-	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
-	DMA_Cmd(DMA1_Stream1, DISABLE);
-	AUDIO_OUT_SHUTDOWN;
-
 	if((infile->seekBytes < infile->fileSize) && !LCDStatusStruct.waitExitKey){
 		ret = RET_PLAY_STOP;
 	} else {
@@ -975,6 +971,11 @@ SKIP_SEEK:
 	}
 
 	EXIT_WAV:
+
+	AUDIO_OUT_SHUTDOWN;
+	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
+	DMA_Cmd(DMA1_Stream1, DISABLE);
+
 
 	LCD_FUNC.putChar = putCharTmp;
 	LCD_FUNC.putWideChar = putWideCharTmp;
@@ -1184,10 +1185,6 @@ int musicPause()
 		return 30;
 	}
 
-	DMA_Cmd(DMA1_Stream1, DISABLE);
-	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
-	AUDIO_OUT_SHUTDOWN;
-
 	// clear FFT analyzer left
 	LCDPutBuffToBgImg(_drawBuff->fft_analyzer_left.x, _drawBuff->fft_analyzer_left.y, \
 			_drawBuff->fft_analyzer_left.width, _drawBuff->fft_analyzer_left.height, _drawBuff->fft_analyzer_left.p);
@@ -1211,6 +1208,10 @@ int musicPause()
 		debug.printf("\r\nplay abort & prev");
 		return RET_PLAY_PREV;
 	}
+
+	AUDIO_OUT_SHUTDOWN;
+	DMA_Cmd(DMA1_Stream1, DISABLE);
+	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
 
 	debug.printf("\r\npaused");
 	LCDPutBuffToBgImg(_drawBuff->navigation.x, _drawBuff->navigation.y, \
@@ -1267,6 +1268,7 @@ void make_shuffle_table(unsigned int seed){
 int PlayMusic(int id){
 	int idNext, idCopy = id;
 	unsigned int seed;
+	static uint8_t pre_navigation_loop_mode = 0;
 
 	if(navigation_loop_mode == NAV_SHUFFLE_PLAY){
 		if(!shuffle_play.mode_changed){
@@ -1286,6 +1288,11 @@ int PlayMusic(int id){
 		shuffle_play.mode_changed = 1;
 	}
 	shuffle_play.play_continuous = 1;
+
+	if((pre_navigation_loop_mode == NAV_SHUFFLE_PLAY) && (navigation_loop_mode != NAV_SHUFFLE_PLAY)){
+		id = idCopy;
+	}
+	pre_navigation_loop_mode = navigation_loop_mode;
 
 	uint16_t entryPointOffset = getListEntryPoint(id);
 

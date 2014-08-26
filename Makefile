@@ -1,6 +1,11 @@
 
+# mfloat abi: softfp or hard
+MFLOAT_ABI = softfp
+
 # MCU name
-MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -march=armv7e-m -mtune=cortex-m4 -mfloat-abi=softfp -mlittle-endian -mthumb-interwork
+MCU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -march=armv7e-m -mtune=cortex-m4 -mfloat-abi=$(MFLOAT_ABI) -mlittle-endian -mthumb-interwork -ffunction-sections -fdata-sections
+
+export MCU
 
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
@@ -53,7 +58,9 @@ EXTRAINCDIRS = lib/CMSIS/Include lib/STM32F4xx_StdPeriph_Driver/inc lib/CMSIS/ST
 CSTANDARD =
 
 # Place -D or -U options here
-CDEFS = -DBUILD=0x`date '+%Y%m%d'` -DARM -DARM_MATH_CM4 -D__FPU_PRESENT -DSTM32F4XX -DUSE_USB_OTG_FS -DUSE_STM324xG_EVAL
+CDEFS = -DARM -DARM_MATH_CM4 -D__FPU_PRESENT -DSTM32F4XX -DUSE_USB_OTG_FS -DUSE_STM324xG_EVAL -DUSE_DEFAULT_STDLIB -DUSE_STDPERIPH_DRIVER
+
+export CDEFS
 
 # Place -I options here
 CINCS =
@@ -114,16 +121,14 @@ MATH_LIB = #-lm
 #    --cref:    add cross reference to  map file
 LDFLAGS = -T stm32_flash.ld
 #LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += -Map=$(TARGET).map
-LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(DIRLIB)) -lcm4 -lstd -ldsp -lc -laac -lmp3
+LDFLAGS += -Map=$(TARGET).map --cref --gc-section
+LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB) $(GCC_LIB) $(patsubst %,-L%,$(DIRLIB)) -lcm4 -lstd -ldsp -lc -laac -lmp3 -lnosys
 
 # ---------------------------------------------------------------------------
 
 # Define directories, if needed.
 DIRINC = .
-#DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb2 /usr/local/arm/lib/gcc/arm-none-eabi/4.4.1/thumb2 ./aac ./mp3
-DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb/cortex-m4 /usr/local/arm/lib/gcc/arm-none-eabi/4.6.2/thumb/cortex-m4 ./aac ./mp3
-#DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source /usr/local/arm/arm-none-eabi/lib/thumb/cortex-m4/float-abi-hard/fpuv4-sp-d16 /usr/local/arm/lib/gcc/arm-none-eabi/4.6.2/thumb/cortex-m4/float-abi-hard/fpuv4-sp-d16 ./aac ./mp3
+DIRLIB = ./lib/STM32F4xx_StdPeriph_Driver ./lib/CMSIS/ST/STM32F4xx ./lib/CMSIS/DSP_Lib/Source $(libc_path) $(libgcc_path) ./aac ./mp3
 
 # Define programs and commands.
 SHELL = sh
@@ -139,6 +144,27 @@ COPY = cp
 YACC = bison
 LEX = flex
 
+find_cortex-m4-text :=
+find_armv7e-m-text :=
+
+ifeq "$(MFLOAT_ABI)" "hard"
+	find_cortex-m4-text := thumb/cortex-m4/float-abi-hard/fpuv4-sp-d16
+	find_armv7e-m-text := armv7e-m/fpu
+else
+	find_cortex-m4-text := thumb/cortex-m4
+	find_armv7e-m-text := armv7e-m/softfp
+endif
+
+multilib := $(shell $(CC) -print-multi-lib)
+find_cortex-m4 := $(findstring $(find_cortex-m4-text),$(multilib))
+find_armv7e-m := $(findstring $(find_armv7e-m-text),$(multilib))
+libgcc-file-name := $(shell $(CC) -print-libgcc-file-name)
+libc-file-name := $(shell $(CC) -print-file-name=libc.a)
+libgcc_path :=
+libc_path :=
+location :=
+
+
 # Define all object files.
 OBJ = $(SRC:.c=.o) $(ASRC:.s=.o) $(BINARY:.bin=.o)
 
@@ -152,16 +178,23 @@ LST = $(ASRC:.s=.lst) $(SRC:.c=.lst)
 # Combine all necessary flags and optional flags.
 # Add target processor to flags.
 ALL_CFLAGS = $(MCU) -I. $(CFLAGS) $(GENDEPFLAGS)
-ALL_ASFLAGS = $(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
+ALL_ASFLAGS = $(MCU) -I. -I./binary -x assembler-with-cpp $(ASFLAGS)
 
 
 
 # Default target.
-all: build gccversion sizeafter
+all:prepair build gccversion sizeafter
 
-build: cm4lib stdlib dsplib libaac libmp3 elf hex lss sym 
+prepair:
+	$(if $(find_cortex-m4),$(eval location = $(find_cortex-m4)),$(if $(find_armv7e-m),$(eval location = $(find_armv7e-m)),$(error "cannot detect library location. please specify libc_path & libgcc_path.")))
+	$(eval libgcc_path = $(subst libgcc.a,$(location),$(libgcc-file-name)))
+	$(eval libc_path = $(subst libc.a,$(location),$(libc-file-name)))
+
+
+build: cm4lib stdlib dsplib libaac libmp3 elf bin hex lss sym 
 
 elf: $(TARGET).elf
+bin: $(TARGET).bin
 hex: $(TARGET).hex
 lss: $(TARGET).lss 
 sym: $(TARGET).sym
@@ -201,6 +234,9 @@ sizeafter:
 gccversion : 
 	$(CC) --version
 
+# Create binary file from ELF
+%.bin: %.elf
+	$(OBJCOPY) -O binary $< $@
 
 # Create final output files (.hex, .eep) from ELF output file.
 %.hex: %.elf

@@ -565,9 +565,9 @@ void mjpegTouch(void) // タッチペン割込み処理
 
 int mjpegPause()
 {
+	AUDIO_OUT_SHUTDOWN;
 	DMA_ITConfig(DMA1_Stream1, DMA_IT_TC | DMA_IT_HT, DISABLE);
 	DMA_Cmd(DMA1_Stream1, DISABLE);
-	AUDIO_OUT_SHUTDOWN;
 
 	debug.printf("\r\npause");
 

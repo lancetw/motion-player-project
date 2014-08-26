@@ -132,6 +132,8 @@ int main(void)
     NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x00000);
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
+    SOUNDInitDAC(0);
+
 	mem_clean();
 
     SETTINGS_Init();

@@ -25,7 +25,7 @@ void REVERB_Set_Prams(REVERB_Struct_Typedef *RFX)
 
 	RFX->amp[1] = 0.5f;
 	RFX->delay[1] = RFX->fs * 0.05f;
-	RFX->repeat[1] = 6;
+	RFX->repeat[1] = 3;
 	REVERB_Init(RFX, 1);
 
 	RFX->amp[2] = 0.5f;
@@ -33,9 +33,9 @@ void REVERB_Set_Prams(REVERB_Struct_Typedef *RFX)
 	RFX->repeat[2] = 3;
 	REVERB_Init(RFX, 2);
 
-	RFX->amp[3] = 0.55f;
-	RFX->delay[3] = RFX->fs * 0.15f;
-	RFX->repeat[3] = 2;
+	RFX->amp[3] = 0.5f;
+	RFX->delay[3] = RFX->fs * 0.30f;
+	RFX->repeat[3] = 1;
 	REVERB_Init(RFX, 3);
 }
 
@@ -176,8 +176,8 @@ void IIR_Filter(IIR_Filter_Struct_Typedef *IIR, uint32_t *out_ptr, float *sout_p
 		{
 			sub = i - m;
 			if(sub < 0){
-				Sleft_in  = sout_ptr_B[IIR->sbuf_size / 2 + sub * 2];
-				Sright_in = sout_ptr_B[IIR->sbuf_size / 2 + sub * 2 + 1];
+				Sleft_in  = sout_ptr_B[(IIR->sbuf_size >> 1) + sub * 2];
+				Sright_in = sout_ptr_B[(IIR->sbuf_size >> 1) + sub * 2 + 1];
 			} else {
 				Sleft_in  = sout_ptr_A[sub * 2];
 				Sright_in = sout_ptr_A[sub * 2 + 1];

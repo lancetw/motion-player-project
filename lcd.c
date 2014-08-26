@@ -771,6 +771,8 @@ uint16_t LCDPutStringUTF8(uint16_t startPosX, uint16_t endPosX, uint8_t lineCnt,
 			} else {
 				LCD_FUNC.putChar(C_FONT_UNDEF_CODE, color);
 			}
+		} else {
+			s++;
 		}
 	}
 
@@ -797,6 +799,8 @@ uint16_t LCDGetStringUTF8PixelLength(uint8_t *s, uint16_t font_width)
 			} else {
 				len += LCD_FUNC.getCharLength(C_FONT_UNDEF_CODE, font_width);
 			}
+		} else {
+			s++;
 		}
 	}
 

@@ -122,11 +122,11 @@ size_t getNClusterCache(MY_FILE *fp, size_t count, size_t cluster)
 	}
 
 	for(;i < fp->cache.fragCnt;i++){
-		avail = fp->cache.p_cluster_gap[i].pre - cluster;
-		if(count <= avail){
+		avail = fp->cache.p_cluster_gap[i].pre - cluster + 1;
+		if(count < avail){
 			return (cluster + count);
 		}
-		count = count - avail - 1;
+		count = count - avail;
 		cluster = fp->cache.p_cluster_gap[i].post;
 	}
 
