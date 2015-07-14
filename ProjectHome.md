@@ -1,0 +1,1 @@
+This project aims to develop the Audio/Movie Player with STmicro's STM32F4-Discovery board.
